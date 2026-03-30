@@ -20,6 +20,7 @@ import logging
 from typing import Optional
 from pathlib import Path
 
+import requests
 import pandas as pd
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -34,10 +35,6 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.agents import AgentType
 from langchain.memory import ConversationBufferWindowMemory
 
-# Google Sheets imports
-import gspread
-from google.oauth2.service_account import Credentials
-
 # ---------------------------------------------------------------------------
 # Load environment variables from .env file
 # ---------------------------------------------------------------------------
@@ -50,30 +47,23 @@ load_dotenv()
 # Get from https://aistudio.google.com/app/apikey  (free tier available)
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
-# Exact name of your Google Sheet tab (visible at the bottom of the sheet)
-# Only needed as fallback — prefer using GOOGLE_SHEET_KEY below
-GOOGLE_SHEET_NAME: str = os.getenv("GOOGLE_SHEET_NAME", "")
-
-# Google Sheet key (the long ID in the URL between /d/ and /edit)
-# URL: https://docs.google.com/spreadsheets/d/<KEY>/edit
-# This is more reliable than matching by name — set this in your .env
-GOOGLE_SHEET_KEY: str = os.getenv(
-    "GOOGLE_SHEET_KEY",
-    "1ABWgQgUzBKHr1Gd9mGUJ4TgeYj-M8KFrE1cP9gjyl4s"  # Your sheet ID
+# Google Sheet ID — the long ID from your sheet URL between /d/ and /edit
+# URL: https://docs.google.com/spreadsheets/d/<THIS_PART>/edit
+GOOGLE_SHEET_ID: str = os.getenv(
+    "GOOGLE_SHEET_ID",
+    "1ABWgQgUzBKHr1Gd9mGUJ4TgeYj-M8KFrE1cP9gjyl4s"  # Your sheet ID (pre-filled)
 )
 
-# Path to your Google service account JSON credentials file
-CREDENTIALS_JSON_PATH: str = os.getenv("CREDENTIALS_JSON_PATH", "credentials.json")
+# Google API Key — no JSON file needed, no service account needed
+# Get from: Google Cloud Console → APIs & Services → Credentials → + Create Credentials → API Key
+# Make sure Google Sheets API is enabled and your sheet is set to "Anyone with the link can view"
+GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+
+# Name of the worksheet tab (default "Form Responses 1" for Google Forms)
+GOOGLE_SHEET_TAB: str = os.getenv("GOOGLE_SHEET_TAB", "Form Responses 1")
 
 # How many seconds before refreshing data from Google Sheets
-# 60 seconds = 1 minute; increase if you want less frequent refreshes
 CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "60"))
-
-# Google Sheets API scopes needed
-GOOGLE_SCOPES = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive",
-]
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -112,58 +102,70 @@ _cache_timestamp: float = 0.0
 
 def load_dataframe() -> pd.DataFrame:
     """
-    Connect to Google Sheets via service account and return the survey
-    data as a Pandas DataFrame.
+    Fetch survey data from Google Sheets using the Sheets REST API v4.
 
-    The service account JSON file must be placed at CREDENTIALS_JSON_PATH
-    (default: credentials.json in this folder).
+    No credentials.json required — uses a plain Google API Key.
 
-    IMPORTANT: You must share the Google Sheet with the service account's
-    client_email address (found inside credentials.json) — otherwise you
-    will get a SpreadsheetNotFound or permission error.
+    Requirements:
+      1. GOOGLE_API_KEY set in your .env (from Google Cloud Console → Credentials → API Key)
+      2. Google Sheets API enabled in your Google Cloud project
+      3. Your Google Sheet shared as "Anyone with the link → Viewer"
     """
-    if not os.path.exists(CREDENTIALS_JSON_PATH):
-        raise FileNotFoundError(
-            f"credentials.json not found at '{CREDENTIALS_JSON_PATH}'. "
-            "Download it from Google Cloud Console → IAM → Service Accounts."
+    if not GOOGLE_API_KEY:
+        raise ValueError(
+            "GOOGLE_API_KEY is not set. "
+            "Go to Google Cloud Console → APIs & Services → Credentials → "
+            "+ Create Credentials → API Key, then add it to your .env file."
         )
 
-    creds = Credentials.from_service_account_file(
-        CREDENTIALS_JSON_PATH, scopes=GOOGLE_SCOPES
+    if not GOOGLE_SHEET_ID:
+        raise ValueError("GOOGLE_SHEET_ID is not set in your .env file.")
+
+    # URL-encode the tab name to handle spaces (e.g. "Form Responses 1" → "Form+Responses+1")
+    tab = requests.utils.quote(GOOGLE_SHEET_TAB)
+
+    # Google Sheets API v4 — values endpoint
+    # Returns all data from the specified tab as a list of rows
+    url = (
+        f"https://sheets.googleapis.com/v4/spreadsheets/{GOOGLE_SHEET_ID}"
+        f"/values/{tab}?key={GOOGLE_API_KEY}"
     )
-    client = gspread.authorize(creds)
 
-    try:
-        if GOOGLE_SHEET_KEY:
-            # Preferred: open by sheet key (the ID from the URL — never changes)
-            spreadsheet = client.open_by_key(GOOGLE_SHEET_KEY)
-            logger.info(f"Opened sheet by key: {GOOGLE_SHEET_KEY}")
-        elif GOOGLE_SHEET_NAME:
-            # Fallback: open by display name
-            spreadsheet = client.open(GOOGLE_SHEET_NAME)
-            logger.info(f"Opened sheet by name: '{GOOGLE_SHEET_NAME}'")
-        else:
-            raise ValueError(
-                "Neither GOOGLE_SHEET_KEY nor GOOGLE_SHEET_NAME is set. "
-                "Add GOOGLE_SHEET_KEY to your .env file."
-            )
-        worksheet = spreadsheet.get_worksheet(0)  # First tab (Form Responses 1)
-    except gspread.SpreadsheetNotFound:
+    response = requests.get(url, timeout=15)
+
+    if response.status_code == 403:
         raise ValueError(
-            "Google Sheet not found or not shared with the service account. "
-            "Open the sheet → Share → paste the service account client_email → Viewer."
+            "Google Sheets API returned 403 Forbidden. "
+            "Make sure: (1) Google Sheets API is enabled in your Cloud project, "
+            "(2) your sheet is set to 'Anyone with the link can view', "
+            "(3) your API key is correct."
+        )
+    if response.status_code == 404:
+        raise ValueError(
+            f"Sheet not found (404). Check GOOGLE_SHEET_ID and GOOGLE_SHEET_TAB in your .env. "
+            f"Tab name used: '{GOOGLE_SHEET_TAB}'"
         )
 
-    records = worksheet.get_all_records()
+    response.raise_for_status()
+    data = response.json()
 
-    if not records:
+    rows = data.get("values", [])
+    if not rows or len(rows) < 2:
         raise ValueError(
-            "The Google Sheet appears to be empty or has no data rows. "
-            "Make sure the sheet has a header row and at least one response."
+            "The Google Sheet appears to be empty or has no response rows. "
+            "Make sure the sheet has a header row and at least one form response."
         )
+
+    # First row is the header, remaining rows are responses
+    headers = rows[0]
+    records = []
+    for row in rows[1:]:
+        # Pad short rows with empty strings (some fields may be blank)
+        padded = row + [""] * (len(headers) - len(row))
+        records.append(dict(zip(headers, padded)))
 
     df = pd.DataFrame(records)
-    logger.info(f"Loaded {len(df)} responses from Google Sheet '{GOOGLE_SHEET_NAME}'.")
+    logger.info(f"Loaded {len(df)} responses via Google Sheets API (tab: '{GOOGLE_SHEET_TAB}').")
     return df
 
 
