@@ -6,10 +6,13 @@
  */
 
 // ---------------------------------------------------------------------------
-// Configure the backend URL in .env.local:
-// NEXT_PUBLIC_API_URL=http://localhost:8000
+// When served from FastAPI (single server mode), API calls go to same origin.
+// In dev (npm run dev on :3000), set NEXT_PUBLIC_API_URL=http://localhost:8000
+// In production (FastAPI serves static files), leave this empty — uses same host.
 // ---------------------------------------------------------------------------
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
 
 export interface ChatResponse {
   response: string;

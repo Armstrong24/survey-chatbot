@@ -18,11 +18,14 @@ import os
 import time
 import logging
 from typing import Optional
+from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 # LangChain imports
@@ -440,17 +443,56 @@ async def clear_chat(session_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Serve Next.js static frontend (built output from frontend/out/)
+# Everything on ONE port — http://localhost:8000
+# ---------------------------------------------------------------------------
+
+# Path to the Next.js static export folder
+# Run `npm run build` inside the frontend/ folder first to generate this
+FRONTEND_OUT = Path(__file__).parent.parent / "frontend" / "out"
+
+if FRONTEND_OUT.exists():
+    # Serve static assets (JS, CSS, images) at /_next/
+    app.mount("/_next", StaticFiles(directory=str(FRONTEND_OUT / "_next")), name="next-assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        """
+        Catch-all route — serves the Next.js static export for any non-API path.
+        This makes http://localhost:8000 open the chat UI directly.
+        """
+        # Try exact file first (e.g. /favicon.ico)
+        candidate = FRONTEND_OUT / full_path
+        if candidate.is_file():
+            return FileResponse(str(candidate))
+
+        # Try path/index.html for Next.js page routes
+        index = FRONTEND_OUT / full_path / "index.html"
+        if index.exists():
+            return FileResponse(str(index))
+
+        # Fallback to root index.html
+        return FileResponse(str(FRONTEND_OUT / "index.html"))
+else:
+    logger.warning(
+        "Frontend build not found at 'frontend/out/'. "
+        "Run `cd frontend && npm run build` to generate it. "
+        "API endpoints are still fully functional."
+    )
+
+
+# ---------------------------------------------------------------------------
 # Startup event
 # ---------------------------------------------------------------------------
 
 @app.on_event("startup")
 async def startup_event():
     logger.info("=" * 60)
-    logger.info("Survey Chatbot API started.")
-    logger.info("Configure .env before use:")
-    logger.info("  GEMINI_API_KEY     — from https://aistudio.google.com/")
-    logger.info("  GOOGLE_SHEET_NAME  — exact name of your Google Sheet")
-    logger.info("  CREDENTIALS_JSON_PATH — path to service account JSON")
+    logger.info("Survey Chatbot started — http://localhost:8000")
+    if FRONTEND_OUT.exists():
+        logger.info("Frontend: serving from frontend/out/ ✓")
+    else:
+        logger.info("Frontend: NOT built yet — run `cd frontend && npm run build`")
     logger.info("=" * 60)
 
 
@@ -461,6 +503,5 @@ async def startup_event():
 if __name__ == "__main__":
     import uvicorn
 
-    # Run with: python main.py
-    # Or directly: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Single command to run everything:  python main.py
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

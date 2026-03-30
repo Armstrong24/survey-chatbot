@@ -1,14 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Allow the frontend to call the FastAPI backend
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/:path*`,
-      },
-    ];
-  },
+  // Static export — builds to frontend/out/
+  // FastAPI then serves these files, so everything runs on localhost:8000
+  output: "export",
+  trailingSlash: true,
 };
 
 module.exports = nextConfig;

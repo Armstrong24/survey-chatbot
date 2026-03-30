@@ -6,6 +6,7 @@
 # Web framework
 fastapi==0.110.0
 uvicorn[standard]==0.29.0
+aiofiles==23.2.1          # Required for FastAPI StaticFiles (serving frontend)
 
 # Environment variables
 python-dotenv==1.0.1
