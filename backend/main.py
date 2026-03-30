@@ -47,8 +47,17 @@ load_dotenv()
 # Get from https://aistudio.google.com/app/apikey  (free tier available)
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
-# Exact name of your Google Sheet (the tab name visible at the bottom)
+# Exact name of your Google Sheet tab (visible at the bottom of the sheet)
+# Only needed as fallback — prefer using GOOGLE_SHEET_KEY below
 GOOGLE_SHEET_NAME: str = os.getenv("GOOGLE_SHEET_NAME", "")
+
+# Google Sheet key (the long ID in the URL between /d/ and /edit)
+# URL: https://docs.google.com/spreadsheets/d/<KEY>/edit
+# This is more reliable than matching by name — set this in your .env
+GOOGLE_SHEET_KEY: str = os.getenv(
+    "GOOGLE_SHEET_KEY",
+    "1ABWgQgUzBKHr1Gd9mGUJ4TgeYj-M8KFrE1cP9gjyl4s"  # Your sheet ID
+)
 
 # Path to your Google service account JSON credentials file
 CREDENTIALS_JSON_PATH: str = os.getenv("CREDENTIALS_JSON_PATH", "credentials.json")
@@ -116,25 +125,30 @@ def load_dataframe() -> pd.DataFrame:
             "Download it from Google Cloud Console → IAM → Service Accounts."
         )
 
-    if not GOOGLE_SHEET_NAME:
-        raise ValueError(
-            "GOOGLE_SHEET_NAME is not set. Add it to your .env file. "
-            "It should match the exact name of your Google Sheet tab."
-        )
-
     creds = Credentials.from_service_account_file(
         CREDENTIALS_JSON_PATH, scopes=GOOGLE_SCOPES
     )
     client = gspread.authorize(creds)
 
     try:
-        # Opens the first worksheet (tab) of the sheet by name
-        spreadsheet = client.open(GOOGLE_SHEET_NAME)
-        worksheet = spreadsheet.get_worksheet(0)
+        if GOOGLE_SHEET_KEY:
+            # Preferred: open by sheet key (the ID from the URL — never changes)
+            spreadsheet = client.open_by_key(GOOGLE_SHEET_KEY)
+            logger.info(f"Opened sheet by key: {GOOGLE_SHEET_KEY}")
+        elif GOOGLE_SHEET_NAME:
+            # Fallback: open by display name
+            spreadsheet = client.open(GOOGLE_SHEET_NAME)
+            logger.info(f"Opened sheet by name: '{GOOGLE_SHEET_NAME}'")
+        else:
+            raise ValueError(
+                "Neither GOOGLE_SHEET_KEY nor GOOGLE_SHEET_NAME is set. "
+                "Add GOOGLE_SHEET_KEY to your .env file."
+            )
+        worksheet = spreadsheet.get_worksheet(0)  # First tab (Form Responses 1)
     except gspread.SpreadsheetNotFound:
         raise ValueError(
-            f"Google Sheet '{GOOGLE_SHEET_NAME}' not found or not shared with "
-            "the service account. Check the sheet name and sharing settings."
+            "Google Sheet not found or not shared with the service account. "
+            "Open the sheet → Share → paste the service account client_email → Viewer."
         )
 
     records = worksheet.get_all_records()
