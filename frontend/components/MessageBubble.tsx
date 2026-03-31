@@ -3,6 +3,9 @@
  * User messages appear on the right (green), AI messages on the left (white).
  */
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -36,13 +39,15 @@ export default function MessageBubble({ message }: Props) {
 
       {/* Bubble */}
       <div
-        className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed whitespace-pre-wrap ${
+        className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed ${
           isUser
             ? "bg-brand-600 text-white rounded-br-sm"
             : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
         }`}
       >
-        {message.content}
+        <div className="chat-markdown">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );
