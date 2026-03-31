@@ -1,6 +1,7 @@
-langchain
-langchain-openai
-langchain-experimental
-langchain-community
-pandas
-requests
+langchain==0.2.6
+langchain-core==0.2.10
+langchain-experimental==0.0.62
+langchain-openai==0.1.25
+langchain-community==0.2.6
+pandas==2.2.2
+requests==2.32.3
