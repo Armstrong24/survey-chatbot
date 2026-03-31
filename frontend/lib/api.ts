@@ -6,13 +6,12 @@
  */
 
 // ---------------------------------------------------------------------------
-// When served from FastAPI (single server mode), API calls go to same origin.
-// In dev (npm run dev on :3000), set NEXT_PUBLIC_API_URL=http://localhost:8000
-// In production (FastAPI serves static files), leave this empty — uses same host.
+// On Vercel: API calls go to /api/* on the same origin (no env var needed).
+// Local dev with FastAPI: set NEXT_PUBLIC_API_URL=http://localhost:8000
 // ---------------------------------------------------------------------------
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
+  (typeof window !== "undefined" ? window.location.origin : "");
 
 export interface ChatResponse {
   response: string;
@@ -34,7 +33,7 @@ export async function sendMessage(
   message: string,
   sessionId: string
 ): Promise<ChatResponse> {
-  const res = await fetch(`${API_BASE}/chat`, {
+  const res = await fetch(`${API_BASE}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, session_id: sessionId }),
@@ -52,7 +51,7 @@ export async function sendMessage(
  * Fetch live stats (total responses count) from the backend.
  */
 export async function fetchStats(): Promise<StatsResponse> {
-  const res = await fetch(`${API_BASE}/stats`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}/api/stats`, { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -61,5 +60,5 @@ export async function fetchStats(): Promise<StatsResponse> {
  * Clear the conversation memory on the backend for this session.
  */
 export async function clearChat(sessionId: string): Promise<void> {
-  await fetch(`${API_BASE}/chat/${sessionId}`, { method: "DELETE" });
+  await fetch(`${API_BASE}/api/chat`, { method: "DELETE" }); // no-op on Vercel (stateless)
 }
