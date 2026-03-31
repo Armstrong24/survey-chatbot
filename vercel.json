@@ -11,10 +11,8 @@
       "config": { "maxLambdaSize": "50mb" }
     }
   ],
-  "routes": [
-    { "src": "/api/chat",  "dest": "/api/chat.py"  },
-    { "src": "/api/stats", "dest": "/api/stats.py" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)",      "dest": "/frontend/$1"  }
+  "rewrites": [
+    { "source": "/api/chat", "destination": "/api/chat.py" },
+    { "source": "/api/stats", "destination": "/api/stats.py" }
   ]
 }
