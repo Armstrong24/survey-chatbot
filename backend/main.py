@@ -536,6 +536,7 @@ else:
 async def startup_event():
     logger.info("=" * 60)
     logger.info("Survey Chatbot started — http://localhost:8000")
+    logger.info(f"LLM model: {OPENROUTER_MODEL}")
     if FRONTEND_OUT.exists():
         logger.info("Frontend: serving from frontend/out/ ✓")
     else:
