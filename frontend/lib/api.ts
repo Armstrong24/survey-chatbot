@@ -13,6 +13,10 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== "undefined" ? window.location.origin : "");
 
+// In local development (NEXT_PUBLIC_API_URL set), FastAPI routes are /chat and /stats.
+// On Vercel (no env var), routes are exposed under /api/*.
+const API_PREFIX = process.env.NEXT_PUBLIC_API_URL ? "" : "/api";
+
 export interface ChatResponse {
   response: string;
   session_id: string;
@@ -33,7 +37,7 @@ export async function sendMessage(
   message: string,
   sessionId: string
 ): Promise<ChatResponse> {
-  const res = await fetch(`${API_BASE}/api/chat`, {
+  const res = await fetch(`${API_BASE}${API_PREFIX}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, session_id: sessionId }),
@@ -51,7 +55,7 @@ export async function sendMessage(
  * Fetch live stats (total responses count) from the backend.
  */
 export async function fetchStats(): Promise<StatsResponse> {
-  const res = await fetch(`${API_BASE}/api/stats`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}${API_PREFIX}/stats`, { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -60,5 +64,5 @@ export async function fetchStats(): Promise<StatsResponse> {
  * Clear the conversation memory on the backend for this session.
  */
 export async function clearChat(sessionId: string): Promise<void> {
-  await fetch(`${API_BASE}/api/chat`, { method: "DELETE" }); // no-op on Vercel (stateless)
+  await fetch(`${API_BASE}${API_PREFIX}/chat/${sessionId}`, { method: "DELETE" });
 }

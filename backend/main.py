@@ -32,8 +32,28 @@ from pydantic import BaseModel
 # LangChain imports
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
-from langchain.agents import AgentType
-from langchain.memory import ConversationBufferWindowMemory
+
+
+class SessionMemory:
+    """Minimal in-process chat memory with a fixed window size."""
+
+    def __init__(self, k: int = 10):
+        self.k = k
+        self._turns: list[tuple[str, str]] = []
+
+    def load_memory_variables(self, _inputs: dict) -> dict:
+        recent_turns = self._turns[-self.k:]
+        history_lines: list[str] = []
+        for user_msg, ai_msg in recent_turns:
+            history_lines.append(f"User: {user_msg}")
+            history_lines.append(f"Assistant: {ai_msg}")
+        return {"chat_history": "\n".join(history_lines)}
+
+    def save_context(self, inputs: dict, outputs: dict) -> None:
+        user_msg = str(inputs.get("input", "")).strip()
+        ai_msg = str(outputs.get("output", "")).strip()
+        if user_msg or ai_msg:
+            self._turns.append((user_msg, ai_msg))
 
 # ---------------------------------------------------------------------------
 # Load environment variables from .env file
@@ -274,16 +294,30 @@ def create_agent(df: pd.DataFrame):
         convert_system_message_to_human=True,
     )
 
-    agent = create_pandas_dataframe_agent(
+    common_kwargs = dict(
         llm=llm,
         df=df,
-        agent_type=AgentType.OPENAI_FUNCTIONS,
         prefix=AGENT_PREFIX,
-        verbose=True,           # Set False in production to reduce server logs
+        verbose=True,               # Set False in production to reduce server logs
         allow_dangerous_code=True,  # Required to let the agent run pandas code
         handle_parsing_errors=True, # Gracefully handles LLM formatting errors
         max_iterations=10,          # Prevents infinite loops
     )
+
+    # Newer LangChain releases prefer string-based agent types.
+    # Fall back to legacy AgentType enum for older versions.
+    try:
+        agent = create_pandas_dataframe_agent(
+            **common_kwargs,
+            agent_type="tool-calling",
+        )
+    except Exception:
+        from langchain.agents import AgentType as LegacyAgentType
+
+        agent = create_pandas_dataframe_agent(
+            **common_kwargs,
+            agent_type=LegacyAgentType.OPENAI_FUNCTIONS,
+        )
 
     return agent
 
@@ -293,20 +327,16 @@ def create_agent(df: pd.DataFrame):
 # ---------------------------------------------------------------------------
 
 # Keyed by session_id — each browser tab/user gets their own memory
-_conversation_memories: dict[str, ConversationBufferWindowMemory] = {}
+_conversation_memories: dict[str, SessionMemory] = {}
 
 
-def get_or_create_memory(session_id: str) -> ConversationBufferWindowMemory:
+def get_or_create_memory(session_id: str) -> SessionMemory:
     """
     Return existing memory for this session, or create a new one.
     k=10 keeps the last 10 turns (5 user + 5 AI) in context window.
     """
     if session_id not in _conversation_memories:
-        _conversation_memories[session_id] = ConversationBufferWindowMemory(
-            k=10,
-            memory_key="chat_history",
-            return_messages=False,
-        )
+        _conversation_memories[session_id] = SessionMemory(k=10)
         logger.info(f"Created new memory for session '{session_id}'.")
     return _conversation_memories[session_id]
 
