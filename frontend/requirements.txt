@@ -1,0 +1,6 @@
+langchain
+langchain-openai
+langchain-experimental
+langchain-community
+pandas
+requests
