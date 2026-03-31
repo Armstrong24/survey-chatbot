@@ -1,6 +1,6 @@
 """
 Vercel Serverless Function — POST /api/chat
-Handles chat messages via LangChain Pandas Agent + Gemini.
+Handles chat messages via LangChain Pandas Agent + OpenRouter.
 """
 
 import os
@@ -10,12 +10,15 @@ import requests
 import pandas as pd
 from http.server import BaseHTTPRequestHandler
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
-from langchain.agents import AgentType
 
 # ── Config from Vercel Environment Variables ──────────────────────────────────
-GEMINI_API_KEY   = os.environ.get("GEMINI_API_KEY", "")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_SITE_URL = os.environ.get("OPENROUTER_SITE_URL", "")
+OPENROUTER_APP_NAME = os.environ.get("OPENROUTER_APP_NAME", "Survey Chatbot")
 GOOGLE_API_KEY   = os.environ.get("GOOGLE_API_KEY", "")
 GOOGLE_SHEET_ID  = os.environ.get("GOOGLE_SHEET_ID", "1ABWgQgUzBKHr1Gd9mGUJ4TgeYj-M8KFrE1cP9gjyl4s")
 GOOGLE_SHEET_TAB = os.environ.get("GOOGLE_SHEET_TAB", "Form Responses 1")
@@ -68,22 +71,42 @@ def load_df():
 
 def get_answer(message: str, history: str) -> tuple[str, int]:
     df  = load_df()
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        google_api_key=GEMINI_API_KEY,
+    headers = {}
+    if OPENROUTER_SITE_URL:
+        headers["HTTP-Referer"] = OPENROUTER_SITE_URL
+    if OPENROUTER_APP_NAME:
+        headers["X-Title"] = OPENROUTER_APP_NAME
+
+    llm = ChatOpenAI(
+        model=OPENROUTER_MODEL,
+        api_key=OPENROUTER_API_KEY,
+        base_url=OPENROUTER_BASE_URL,
         temperature=0,
-        convert_system_message_to_human=True,
+        default_headers=headers or None,
     )
-    agent = create_pandas_dataframe_agent(
+
+    common_kwargs = dict(
         llm=llm,
         df=df,
-        agent_type=AgentType.OPENAI_FUNCTIONS,
         prefix=AGENT_PREFIX,
         verbose=False,
         allow_dangerous_code=True,
         handle_parsing_errors=True,
         max_iterations=10,
     )
+
+    try:
+        agent = create_pandas_dataframe_agent(
+            **common_kwargs,
+            agent_type="tool-calling",
+        )
+    except Exception:
+        from langchain.agents import AgentType as LegacyAgentType
+
+        agent = create_pandas_dataframe_agent(
+            **common_kwargs,
+            agent_type=LegacyAgentType.OPENAI_FUNCTIONS,
+        )
     prompt = f"Previous conversation:\n{history}\n\nUser: {message}" if history else message
     answer = agent.run(prompt)
     return answer, len(df)
@@ -111,8 +134,8 @@ class handler(BaseHTTPRequestHandler):
         if not message:
             self._error(400, "message is required")
             return
-        if not GEMINI_API_KEY:
-            self._error(503, "GEMINI_API_KEY not configured in Vercel env vars")
+        if not OPENROUTER_API_KEY:
+            self._error(503, "OPENROUTER_API_KEY not configured in Vercel env vars")
             return
         if not GOOGLE_API_KEY:
             self._error(503, "GOOGLE_API_KEY not configured in Vercel env vars")

@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 langchain
-langchain-google-genai
+langchain-openai
 langchain-experimental
 langchain-community
 pandas
