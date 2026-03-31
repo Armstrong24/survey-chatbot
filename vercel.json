@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/next"
+    },
+    {
+      "src": "api/*.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "50mb" }
+    }
+  ],
+  "routes": [
+    { "src": "/api/chat",  "dest": "/api/chat.py"  },
+    { "src": "/api/stats", "dest": "/api/stats.py" },
+    { "src": "/(.*)",      "dest": "/frontend/$1"  }
+  ]
+}
