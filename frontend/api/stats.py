@@ -10,9 +10,12 @@ import requests
 import pandas as pd
 from http.server import BaseHTTPRequestHandler
 
-GOOGLE_API_KEY   = os.environ.get("GOOGLE_API_KEY", "")
-GOOGLE_SHEET_ID  = os.environ.get("GOOGLE_SHEET_ID", "1ABWgQgUzBKHr1Gd9mGUJ4TgeYj-M8KFrE1cP9gjyl4s")
-GOOGLE_SHEET_TAB = os.environ.get("GOOGLE_SHEET_TAB", "Form Responses 1")
+def _clean_env(value: str) -> str:
+    return value.strip().replace("\n", "").replace("\r", "")
+
+GOOGLE_API_KEY   = _clean_env(os.environ.get("GOOGLE_API_KEY", ""))
+GOOGLE_SHEET_ID  = _clean_env(os.environ.get("GOOGLE_SHEET_ID", "1ABWgQgUzBKHr1Gd9mGUJ4TgeYj-M8KFrE1cP9gjyl4s"))
+GOOGLE_SHEET_TAB = _clean_env(os.environ.get("GOOGLE_SHEET_TAB", "Form Responses 1"))
 
 _cached_df  = None
 _cache_time = 0.0

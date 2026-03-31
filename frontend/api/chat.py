@@ -14,15 +14,19 @@ from http.server import BaseHTTPRequestHandler
 from langchain_openai import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 
+
+def _clean_env(value: str) -> str:
+    return value.strip().replace("\n", "").replace("\r", "")
+
 # ── Config from Vercel Environment Variables ──────────────────────────────────
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")
-OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-OPENROUTER_SITE_URL = os.environ.get("OPENROUTER_SITE_URL", "")
-OPENROUTER_APP_NAME = os.environ.get("OPENROUTER_APP_NAME", "Survey Chatbot")
-GOOGLE_API_KEY   = os.environ.get("GOOGLE_API_KEY", "")
-GOOGLE_SHEET_ID  = os.environ.get("GOOGLE_SHEET_ID", "1ABWgQgUzBKHr1Gd9mGUJ4TgeYj-M8KFrE1cP9gjyl4s")
-GOOGLE_SHEET_TAB = os.environ.get("GOOGLE_SHEET_TAB", "Form Responses 1")
+OPENROUTER_API_KEY = _clean_env(os.environ.get("OPENROUTER_API_KEY", ""))
+OPENROUTER_MODEL = _clean_env(os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini"))
+OPENROUTER_BASE_URL = _clean_env(os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"))
+OPENROUTER_SITE_URL = _clean_env(os.environ.get("OPENROUTER_SITE_URL", ""))
+OPENROUTER_APP_NAME = _clean_env(os.environ.get("OPENROUTER_APP_NAME", "Survey Chatbot"))
+GOOGLE_API_KEY   = _clean_env(os.environ.get("GOOGLE_API_KEY", ""))
+GOOGLE_SHEET_ID  = _clean_env(os.environ.get("GOOGLE_SHEET_ID", "1ABWgQgUzBKHr1Gd9mGUJ4TgeYj-M8KFrE1cP9gjyl4s"))
+GOOGLE_SHEET_TAB = _clean_env(os.environ.get("GOOGLE_SHEET_TAB", "Form Responses 1"))
 
 # Simple in-memory cache (persists within the same function instance warm window)
 _cached_df   = None
