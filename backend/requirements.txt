@@ -26,5 +26,5 @@ langchain-core==0.2.10
 # LangChain Pandas DataFrame Agent (experimental)
 langchain-experimental==0.0.62
 
-# Gemini LLM integration
-langchain-google-genai==1.0.6
+# OpenRouter (OpenAI-compatible) LLM integration
+langchain-openai==0.1.25

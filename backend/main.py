@@ -30,7 +30,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 # LangChain imports
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 
 
@@ -64,8 +64,16 @@ load_dotenv()
 # CONFIGURATION — Edit your .env file, NOT this file directly
 # ---------------------------------------------------------------------------
 
-# Get from https://aistudio.google.com/app/apikey  (free tier available)
-GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+# OpenRouter API key (https://openrouter.ai/keys)
+OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+
+# OpenRouter endpoint and model
+OPENROUTER_BASE_URL: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+
+# Optional OpenRouter attribution headers
+OPENROUTER_SITE_URL: str = os.getenv("OPENROUTER_SITE_URL", "")
+OPENROUTER_APP_NAME: str = os.getenv("OPENROUTER_APP_NAME", "Survey Chatbot")
 
 # Google Sheet ID — the long ID from your sheet URL between /d/ and /edit
 # URL: https://docs.google.com/spreadsheets/d/<THIS_PART>/edit
@@ -274,24 +282,31 @@ Q16 → What would encourage switch to sustainable bags
 
 def create_agent(df: pd.DataFrame):
     """
-    Build a LangChain Pandas DataFrame Agent using Gemini 1.5 Flash.
+    Build a LangChain Pandas DataFrame Agent using OpenRouter.
 
     The agent can write and execute Python/pandas code against the DataFrame
     to answer any natural-language question about the survey data.
     """
-    if not GEMINI_API_KEY:
+    if not OPENROUTER_API_KEY:
         raise ValueError(
-            "GEMINI_API_KEY is not set. Get yours at https://aistudio.google.com/ "
+            "OPENROUTER_API_KEY is not set. Get yours at https://openrouter.ai/keys "
             "and add it to your .env file."
         )
 
-    # Using Gemini 1.5 Flash — fast and cost-effective for data analysis tasks
-    # temperature=0 ensures deterministic, factual answers
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        google_api_key=GEMINI_API_KEY,  # Loaded from .env — never hardcode this
+    # OpenRouter uses the OpenAI-compatible API.
+    # temperature=0 ensures deterministic, factual answers.
+    default_headers = {}
+    if OPENROUTER_SITE_URL:
+        default_headers["HTTP-Referer"] = OPENROUTER_SITE_URL
+    if OPENROUTER_APP_NAME:
+        default_headers["X-Title"] = OPENROUTER_APP_NAME
+
+    llm = ChatOpenAI(
+        model=OPENROUTER_MODEL,
+        api_key=OPENROUTER_API_KEY,
+        base_url=OPENROUTER_BASE_URL,
         temperature=0,
-        convert_system_message_to_human=True,
+        default_headers=default_headers or None,
     )
 
     common_kwargs = dict(

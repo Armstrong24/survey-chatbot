@@ -10,7 +10,7 @@ export default function TypingIndicator() {
       </div>
 
       {/* Bubble */}
-      <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm dark:bg-gray-900 dark:border-gray-700">
         <div className="flex items-center gap-1.5 h-5">
           <span className="w-2 h-2 rounded-full bg-brand-500 dot-bounce" />
           <span className="w-2 h-2 rounded-full bg-brand-500 dot-bounce" />

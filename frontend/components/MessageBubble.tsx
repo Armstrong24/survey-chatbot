@@ -39,7 +39,7 @@ export default function MessageBubble({ message }: Props) {
         className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed whitespace-pre-wrap ${
           isUser
             ? "bg-brand-600 text-white rounded-br-sm"
-            : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm"
+            : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
         }`}
       >
         {message.content}

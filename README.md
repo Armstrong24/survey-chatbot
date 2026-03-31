@@ -1,205 +1,108 @@
-# Pune Plastic Bag Survey — Data Analysis Chatbot
+# Pune Plastic Bag Survey Chatbot
 
-> Ask plain-English questions about your live survey data and get dynamically calculated answers powered by Gemini AI.
+Ask plain-English questions about live survey responses and get data-backed answers.
 
----
+## Tech Stack
 
-## Architecture
+- Frontend: Next.js 14, React 18, TypeScript, Tailwind CSS
+- Backend: FastAPI, Pandas, LangChain Experimental Agent
+- LLM Provider: OpenRouter (OpenAI-compatible endpoint)
+- Data Source: Google Sheets API (reads survey responses from a sheet tab)
 
-```
-Browser (Next.js + Tailwind)
-        │
-        │  HTTP (REST)
-        ▼
-FastAPI Backend (Python)
-        │
-        ├── gspread ──────────► Google Sheets (live data)
-        │
-        └── LangChain Pandas Agent ──► Gemini 1.5 Flash
-```
+## Requirements
 
----
+### System Requirements
+
+- Node.js 18+
+- Python 3.10+
+- npm
+
+### Runtime Requirements
+
+- OpenRouter API key
+- Google Sheets API key
+- Google Sheet ID and tab name
 
 ## Project Structure
 
-```
-/
+```text
+.
 ├── backend/
-│   ├── main.py               ← FastAPI server (all backend logic)
-│   ├── requirements.txt      ← Python dependencies
-│   ├── .env.example          ← Copy to .env and fill in your keys
-│   └── credentials.json      ← YOUR Google service account key (you add this)
-│
+│   ├── main.py
+│   ├── requirements.txt
+│   └── .env.example
 ├── frontend/
 │   ├── app/
-│   │   ├── layout.tsx        ← Root layout
-│   │   ├── page.tsx          ← Main chat page
-│   │   └── globals.css       ← Tailwind + custom animations
 │   ├── components/
-│   │   ├── Sidebar.tsx       ← Project info + live count + suggestions
-│   │   ├── MessageBubble.tsx ← Chat message component
-│   │   └── TypingIndicator.tsx ← Animated dots while AI thinks
 │   ├── lib/
-│   │   └── api.ts            ← Typed API client
 │   ├── package.json
-│   ├── tailwind.config.ts
-│   └── .env.local.example    ← Copy to .env.local and fill in backend URL
-│
+│   └── .env.local.example
 └── README.md
 ```
 
----
-
-## Setup: Step-by-Step
-
-### Part 1 — Google Cloud Setup (one-time)
-
-**Step 1: Create a Google Cloud Project**
-1. Go to https://console.cloud.google.com/
-2. Create a new project (or use an existing one)
-
-**Step 2: Enable APIs**
-1. In the left menu: APIs & Services → Enable APIs
-2. Enable: **Google Sheets API**
-3. Enable: **Google Drive API**
-
-**Step 3: Create a Service Account**
-1. IAM & Admin → Service Accounts → Create Service Account
-2. Give it any name (e.g. `survey-chatbot`)
-3. Skip the optional role grants and click Done
-
-**Step 4: Download the credentials JSON**
-1. Click on your new service account
-2. Keys tab → Add Key → Create new key → JSON
-3. A `credentials.json` file will download
-4. **Place it in the `backend/` folder**
-
-**Step 5: Share your Google Sheet with the service account**
-1. Open `credentials.json` and copy the `client_email` value
-   (it looks like `survey-chatbot@your-project.iam.gserviceaccount.com`)
-2. Open your Google Sheet
-3. Share it with that email address (Viewer access is enough)
-
----
-
-### Part 2 — Backend Setup
-
-```bash
-cd backend
-
-# 1. Create and activate a virtual environment (recommended)
-python -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Create your .env file
-cp .env.example .env
-```
-
-Now open `backend/.env` and fill in your values:
-
-```env
-# From https://aistudio.google.com/app/apikey
-GEMINI_API_KEY=AIza...your_key_here...
-
-# Exact name of your Google Sheet (the title, NOT the URL)
-GOOGLE_SHEET_NAME=Form Responses 1
-
-# Path to your service account credentials file
-CREDENTIALS_JSON_PATH=credentials.json
-```
-
-**Run the backend:**
-
-```bash
-python main.py
-# OR
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Verify it works: open http://localhost:8000/health → should return `{"status": "ok"}`
-
-Check live count: open http://localhost:8000/stats → shows total responses
-
----
-
-### Part 3 — Frontend Setup
-
-```bash
-cd frontend
-
-# 1. Install Node dependencies
-npm install
-
-# 2. Create your .env.local file
-cp .env.local.example .env.local
-```
-
-The default `.env.local` points to `http://localhost:8000`. If your backend is
-running locally, no changes needed.
-
-**Run the frontend:**
-
-```bash
-npm run dev
-```
-
-Open http://localhost:3000 — you should see the chat interface.
-
----
-
-## Troubleshooting
-
-| Error | Fix |
-|-------|-----|
-| `SpreadsheetNotFound` | Share the sheet with the service account's `client_email` |
-| `GOOGLE_SHEET_NAME is not set` | Add `GOOGLE_SHEET_NAME` to your `.env` file |
-| `GEMINI_API_KEY is not set` | Add your Gemini key to `.env` |
-| `credentials.json not found` | Place the file in the `backend/` folder |
-| `CORS error` in browser | Make sure the FastAPI backend is running on port 8000 |
-| AI gives wrong numbers | The sheet column names may differ — ask "What columns are available?" |
-
----
-
-## Adding Your Google Sheet URL Later
-
-When you have the Google Sheet link:
-
-1. Open the sheet
-2. Look at the **tab name at the bottom** (e.g. "Form Responses 1")
-3. Set `GOOGLE_SHEET_NAME=Form Responses 1` in `backend/.env`
-
-That's it — the backend uses the sheet name to find it, not the URL.
-
----
-
-## Environment Variables Reference
+## Environment Variables
 
 ### Backend (`backend/.env`)
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `GEMINI_API_KEY` | Yes | Gemini API key from aistudio.google.com |
-| `GOOGLE_SHEET_NAME` | Yes | Exact name of the Google Sheet tab |
-| `CREDENTIALS_JSON_PATH` | Yes | Path to service account JSON (default: `credentials.json`) |
-| `CACHE_TTL_SECONDS` | No | How often to refresh data (default: 60) |
+Copy `backend/.env.example` to `backend/.env` and set the values:
+
+- `OPENROUTER_API_KEY` (required)
+- `OPENROUTER_MODEL` (default: `openai/gpt-4o-mini`)
+- `OPENROUTER_BASE_URL` (default: `https://openrouter.ai/api/v1`)
+- `OPENROUTER_SITE_URL` (optional)
+- `OPENROUTER_APP_NAME` (optional)
+- `GOOGLE_API_KEY` (required)
+- `GOOGLE_SHEET_ID` (required)
+- `GOOGLE_SHEET_TAB` (default: `Form Responses 1`)
+- `CACHE_TTL_SECONDS` (default: `60`)
 
 ### Frontend (`frontend/.env.local`)
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Yes | URL of the FastAPI backend (default: `http://localhost:8000`) |
+Copy `frontend/.env.local.example` to `frontend/.env.local`:
 
----
+- `NEXT_PUBLIC_API_URL=http://localhost:8000`
+
+## How to Run
+
+### 1. Start Backend
+
+```powershell
+cd backend
+"C:/Program Files/Python313/python.exe" -m pip install -r requirements.txt
+Copy-Item .env.example .env -Force
+# Edit .env and add your OPENROUTER_API_KEY + Google Sheets values
+& "C:/Program Files/Python313/python.exe" main.py
+```
+
+Backend should be available at `http://localhost:8000`.
+
+Quick checks:
+
+- `http://localhost:8000/health`
+- `http://localhost:8000/stats`
+
+### 2. Start Frontend
+
+```powershell
+cd frontend
+npm install
+Copy-Item .env.local.example .env.local -Force
+npm run dev
+```
+
+Frontend should be available at `http://localhost:3000`.
 
 ## How It Works
 
-1. **Data Loading**: On first chat message, the backend authenticates with Google Sheets using the service account, fetches all responses as a Pandas DataFrame, and caches it for 60 seconds.
+1. The frontend sends chat requests to the FastAPI backend.
+2. The backend fetches survey rows from Google Sheets using `GOOGLE_API_KEY`, `GOOGLE_SHEET_ID`, and `GOOGLE_SHEET_TAB`.
+3. Rows are converted into a Pandas DataFrame and cached for `CACHE_TTL_SECONDS`.
+4. A LangChain Pandas DataFrame agent uses OpenRouter as the model provider to compute answers from live data.
+5. Session-based in-memory chat history is included so follow-up questions keep context.
+6. The frontend periodically calls `/stats` to show the latest response count.
 
-2. **Agent**: A LangChain Pandas DataFrame Agent wraps the DataFrame with a Gemini 1.5 Flash LLM. The agent can write and execute Python/pandas code dynamically to answer any question.
+## Notes
 
-3. **Memory**: Each browser tab gets its own `session_id`. The backend stores a `ConversationBufferWindowMemory` (last 10 turns) per session. Follow-up questions ("What about the second reason?") work because the previous context is injected into each prompt.
-
-4. **Frontend**: Next.js 14 App Router + Tailwind CSS. The sidebar polls `/stats` every 30 seconds to show the live response count. Messages fade in with animation. A typing indicator (animated dots) shows while the agent is computing.
+- Local backend routes are `/chat`, `/stats`, and `/health`.
+- In local development, set `NEXT_PUBLIC_API_URL` so frontend calls the FastAPI backend directly.
+- If `/stats` fails, verify Google Sheets values in `backend/.env`.

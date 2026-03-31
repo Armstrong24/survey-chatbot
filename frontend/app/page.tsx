@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import Sidebar from "@/components/Sidebar";
 import MessageBubble, { Message } from "@/components/MessageBubble";
 import TypingIndicator from "@/components/TypingIndicator";
+import ThemeToggle from "@/components/ThemeToggle";
 import { sendMessage, clearChat } from "@/lib/api";
 
 function getSessionId(): string {
@@ -89,7 +90,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
 
       {/* Sidebar — desktop always visible, mobile slide-in */}
       <Sidebar
@@ -102,12 +103,12 @@ export default function ChatPage() {
       <main className="flex flex-col flex-1 overflow-hidden min-w-0">
 
         {/* Top bar */}
-        <header className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
+        <header className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 shadow-sm flex-shrink-0 dark:bg-gray-900 dark:border-gray-800">
           <div className="flex items-center gap-3">
             {/* Hamburger — mobile only */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+              className="md:hidden p-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800"
               aria-label="Open menu"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -115,29 +116,32 @@ export default function ChatPage() {
               </svg>
             </button>
             <div>
-              <h2 className="text-sm font-semibold text-gray-800 leading-tight">
+              <h2 className="text-sm font-semibold text-gray-800 leading-tight dark:text-gray-100">
                 Plastic Bag Survey — Data Chat
               </h2>
-              <p className="text-xs text-gray-400 hidden sm:block">
+              <p className="text-xs text-gray-400 hidden sm:block dark:text-gray-500">
                 Ask questions in plain English · Answers calculated live
               </p>
             </div>
           </div>
 
-          <button
-            onClick={handleClear}
-            disabled={isLoading}
-            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-500 border border-gray-200 hover:border-red-300 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-40 flex-shrink-0"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14H6L5 6" />
-              <path d="M10 11v6M14 11v6" />
-              <path d="M9 6V4h6v2" />
-            </svg>
-            <span className="hidden sm:inline">Clear chat</span>
-            <span className="sm:hidden">Clear</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <button
+              onClick={handleClear}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-500 border border-gray-200 hover:border-red-300 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-40 flex-shrink-0 dark:text-gray-300 dark:border-gray-700 dark:hover:border-red-400"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14H6L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4h6v2" />
+              </svg>
+              <span className="hidden sm:inline">Clear chat</span>
+              <span className="sm:hidden">Clear</span>
+            </button>
+          </div>
         </header>
 
         {/* Messages list */}
@@ -147,12 +151,12 @@ export default function ChatPage() {
           ))}
           {isLoading && <TypingIndicator />}
           {error && (
-            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 msg-appear">
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 msg-appear dark:bg-red-950/40 dark:border-red-900 dark:text-red-300">
               <span className="text-base">⚠️</span>
               <div>
                 <p className="font-medium">Error from the AI backend</p>
-                <p className="text-red-600 mt-0.5 text-xs">{error}</p>
-                <p className="text-red-500 mt-1 text-xs">
+                <p className="text-red-600 mt-0.5 text-xs dark:text-red-300">{error}</p>
+                <p className="text-red-500 mt-1 text-xs dark:text-red-400">
                   Make sure the backend is running and your .env is configured.
                 </p>
               </div>
@@ -162,7 +166,7 @@ export default function ChatPage() {
         </div>
 
         {/* Input bar */}
-        <div className="flex-shrink-0 border-t border-gray-200 bg-white px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex-shrink-0 border-t border-gray-200 bg-white px-4 sm:px-6 py-3 sm:py-4 dark:border-gray-800 dark:bg-gray-900">
           <form
             onSubmit={(e) => { e.preventDefault(); handleSend(input); }}
             className="flex items-end gap-2 sm:gap-3"
@@ -175,7 +179,7 @@ export default function ChatPage() {
               onKeyDown={handleKeyDown}
               disabled={isLoading}
               placeholder="Ask anything about the survey…"
-              className="flex-1 resize-none rounded-xl border border-gray-300 bg-gray-50 px-3 sm:px-4 py-2.5 sm:py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 placeholder-gray-400 max-h-40 leading-relaxed"
+              className="flex-1 resize-none rounded-xl border border-gray-300 bg-gray-50 px-3 sm:px-4 py-2.5 sm:py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 placeholder-gray-400 max-h-40 leading-relaxed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
               style={{ minHeight: "44px" }}
               onInput={(e) => {
                 const el = e.currentTarget;
@@ -186,7 +190,7 @@ export default function ChatPage() {
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors shadow-sm"
+              className="flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors shadow-sm dark:disabled:bg-gray-700"
               aria-label="Send message"
             >
               {isLoading ? (
@@ -202,7 +206,7 @@ export default function ChatPage() {
               )}
             </button>
           </form>
-          <p className="text-center text-xs text-gray-400 mt-2 hidden sm:block">
+          <p className="text-center text-xs text-gray-400 mt-2 hidden sm:block dark:text-gray-500">
             Shift+Enter for new line · Answers calculated live from Google Sheet
           </p>
         </div>

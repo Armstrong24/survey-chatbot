@@ -70,12 +70,13 @@ export default function Sidebar({ onSuggest, isOpen, onClose }: Props) {
         className={`
           fixed top-0 left-0 h-full z-30 w-72 bg-white border-r border-gray-200
           flex flex-col overflow-y-auto transition-transform duration-300
+          dark:bg-gray-900 dark:border-gray-800
           md:relative md:translate-x-0 md:flex-shrink-0
           ${isOpen ? "translate-x-0 shadow-xl" : "-translate-x-full"}
         `}
       >
         {/* Header / branding */}
-        <div className="p-5 border-b border-gray-100">
+        <div className="p-5 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-2xl">🌿</span>
@@ -86,7 +87,7 @@ export default function Sidebar({ onSuggest, isOpen, onClose }: Props) {
             {/* Close button — mobile only */}
             <button
               onClick={onClose}
-              className="md:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              className="md:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors dark:hover:bg-gray-800 dark:hover:text-gray-200"
               aria-label="Close menu"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -94,37 +95,37 @@ export default function Sidebar({ onSuggest, isOpen, onClose }: Props) {
               </svg>
             </button>
           </div>
-          <h1 className="text-sm font-bold text-gray-900 leading-snug">
+          <h1 className="text-sm font-bold text-gray-900 leading-snug dark:text-gray-100">
             Awareness &amp; Readiness: Sustainable Alternatives to Plastic Bags
           </h1>
-          <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+          <p className="text-xs text-gray-500 mt-1.5 leading-relaxed dark:text-gray-400">
             Pune, India — Ask any question about the survey data and get
             real-time, calculated answers.
           </p>
         </div>
 
         {/* Live response counter */}
-        <div className="m-4 p-4 rounded-xl bg-brand-50 border border-brand-200">
+        <div className="m-4 p-4 rounded-xl bg-brand-50 border border-brand-200 dark:bg-brand-900/30 dark:border-brand-800">
           <p className="text-xs text-brand-700 font-medium uppercase tracking-wider mb-1">
             Total Live Responses
           </p>
           {loading ? (
             <div className="h-8 w-16 bg-brand-200 animate-pulse rounded" />
           ) : error ? (
-            <p className="text-sm text-red-500">Could not load</p>
+            <p className="text-sm text-red-500 dark:text-red-400">Could not load</p>
           ) : (
             <p className="text-3xl font-bold text-brand-700">
               {totalResponses?.toLocaleString()}
             </p>
           )}
-          <p className="text-xs text-brand-600 mt-1 opacity-70">
+          <p className="text-xs text-brand-600 mt-1 opacity-70 dark:text-brand-300">
             Updates every 30 seconds
           </p>
         </div>
 
         {/* Suggested questions */}
         <div className="px-4 pb-4 flex-1">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 dark:text-gray-400">
             Try asking
           </p>
           <div className="flex flex-col gap-1.5">
@@ -132,7 +133,7 @@ export default function Sidebar({ onSuggest, isOpen, onClose }: Props) {
               <button
                 key={q}
                 onClick={() => handleSuggest(q)}
-                className="text-left text-xs text-gray-600 hover:text-brand-700 hover:bg-brand-50 px-3 py-2 rounded-lg transition-colors border border-transparent hover:border-brand-200"
+                className="text-left text-xs text-gray-600 hover:text-brand-700 hover:bg-brand-50 px-3 py-2 rounded-lg transition-colors border border-transparent hover:border-brand-200 dark:text-gray-300 dark:hover:text-brand-200 dark:hover:bg-brand-900/30 dark:hover:border-brand-800"
               >
                 {q}
               </button>
@@ -141,9 +142,9 @@ export default function Sidebar({ onSuggest, isOpen, onClose }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-100 text-center">
-          <p className="text-xs text-gray-400">
-            Data from Google Forms · Powered by Gemini
+        <div className="p-4 border-t border-gray-100 text-center dark:border-gray-800">
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            Data from Google Forms · Powered by OpenRouter
           </p>
         </div>
       </aside>
