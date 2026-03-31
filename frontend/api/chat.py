@@ -6,6 +6,7 @@ Handles chat messages via LangChain Pandas Agent + OpenRouter.
 import os
 import json
 import time
+import traceback
 import requests
 import pandas as pd
 from http.server import BaseHTTPRequestHandler
@@ -145,7 +146,8 @@ class handler(BaseHTTPRequestHandler):
             answer, total = get_answer(message, history)
             self._json({"response": answer, "total_responses": total})
         except Exception as e:
-            self._error(500, str(e))
+            traceback.print_exc()
+            self._error(500, f"OpenRouter error: {e}")
 
     def _json(self, data: dict):
         payload = json.dumps(data).encode()
@@ -157,7 +159,7 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def _error(self, code: int, msg: str):
-        payload = json.dumps({"error": msg}).encode()
+        payload = json.dumps({"detail": msg}).encode()
         self.send_response(code)
         self._cors()
         self.send_header("Content-Type", "application/json")
