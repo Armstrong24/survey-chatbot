@@ -1,6 +1,6 @@
 # Pune Plastic Bag Survey Chatbot
 
-Ask plain-English questions about live survey responses and get data-backed answers.
+Ask plain-English questions about live survey responses and get data-backed answers with a light/dark/system theme toggle.
 
 ## Tech Stack
 
@@ -47,7 +47,7 @@ Ask plain-English questions about live survey responses and get data-backed answ
 Copy `backend/.env.example` to `backend/.env` and set the values:
 
 - `OPENROUTER_API_KEY` (required)
-- `OPENROUTER_MODEL` (default: `openai/gpt-4o-mini`)
+- `OPENROUTER_MODEL` (example: `qwen/qwen3.6-plus-preview:free`)
 - `OPENROUTER_BASE_URL` (default: `https://openrouter.ai/api/v1`)
 - `OPENROUTER_SITE_URL` (optional)
 - `OPENROUTER_APP_NAME` (optional)
@@ -63,6 +63,8 @@ Copy `frontend/.env.local.example` to `frontend/.env.local`:
 - `NEXT_PUBLIC_API_URL=http://localhost:8000`
 
 ## How to Run
+
+Open two terminals: one for backend, one for frontend.
 
 ### 1. Start Backend
 
@@ -90,7 +92,7 @@ Copy-Item .env.local.example .env.local -Force
 npm run dev
 ```
 
-Frontend should be available at `http://localhost:3000`.
+Frontend should be available at `http://localhost:3000` (or `http://localhost:3001` if 3000 is in use).
 
 ## How It Works
 
@@ -106,3 +108,4 @@ Frontend should be available at `http://localhost:3000`.
 - Local backend routes are `/chat`, `/stats`, and `/health`.
 - In local development, set `NEXT_PUBLIC_API_URL` so frontend calls the FastAPI backend directly.
 - If `/stats` fails, verify Google Sheets values in `backend/.env`.
+- Theme preference is stored in localStorage and respects system mode.
