@@ -17,8 +17,27 @@ interface Props {
   message: Message;
 }
 
+function normalizeMessageContent(content: string): string {
+  let text = content;
+
+  // Normalize odd spacing chars that often appear in LLM output.
+  text = text
+    .replace(/[\u00A0\u202F\u2007]/g, " ")
+    .replace(/[\u200B\u200C\u200D\uFEFF]/g, "");
+
+  // Convert common math-like tokens to simpler readable text.
+  text = text.replace(/\\times/g, "*");
+  text = text.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "($1)/($2)");
+
+  // If model wraps formula in [ ... ], show it as plain text block.
+  text = text.replace(/\[\s*((?:.|\n)*?\\frac(?:.|\n)*?)\s*\]/g, "$1");
+
+  return text;
+}
+
 export default function MessageBubble({ message }: Props) {
   const isUser = message.role === "user";
+  const content = isUser ? message.content : normalizeMessageContent(message.content);
 
   return (
     <div
@@ -46,7 +65,7 @@ export default function MessageBubble({ message }: Props) {
         }`}
       >
         <div className="chat-markdown">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
         </div>
       </div>
     </div>
