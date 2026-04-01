@@ -100,36 +100,51 @@ def get_answer(message: str, history: str) -> tuple[str, int]:
         max_iterations=10,
     )
 
-    try:
-        agent = create_pandas_dataframe_agent(
-            **common_kwargs,
-            agent_type="tool-calling",
-        )
-    except Exception:
-        from langchain.agents import AgentType as LegacyAgentType
-
-        agent = create_pandas_dataframe_agent(
-            **common_kwargs,
-            agent_type=LegacyAgentType.OPENAI_FUNCTIONS,
-        )
     prompt = f"Previous conversation:\n{history}\n\nUser: {message}" if history else message
-    try:
-        answer = agent.run(prompt)
-    except Exception as e:
-        err = str(e)
-        if "python_repl_ast" in err and "missing properties: 'query'" in err:
-            # Some OpenAI-compatible models can emit tool args that fail strict
-            # schema validation. Retry with ReAct mode to avoid tool-call schema issues.
-            from langchain.agents import AgentType as LegacyAgentType
+    from langchain.agents import AgentType as LegacyAgentType
 
-            fallback_agent = create_pandas_dataframe_agent(
+    is_groq = "api.groq.com" in OPENROUTER_BASE_URL.lower()
+    is_gpt_oss = "gpt-oss" in OPENROUTER_MODEL.lower()
+
+    if is_groq or is_gpt_oss:
+        # Groq + GPT-OSS is more stable with ReAct-style agenting.
+        agent_candidates = [
+            LegacyAgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            "tool-calling",
+            LegacyAgentType.OPENAI_FUNCTIONS,
+        ]
+    else:
+        agent_candidates = [
+            "tool-calling",
+            LegacyAgentType.OPENAI_FUNCTIONS,
+            LegacyAgentType.ZERO_SHOT_REACT_DESCRIPTION,
+        ]
+
+    last_error = None
+    for agent_type in agent_candidates:
+        try:
+            agent = create_pandas_dataframe_agent(
                 **common_kwargs,
-                agent_type=LegacyAgentType.ZERO_SHOT_REACT_DESCRIPTION,
+                agent_type=agent_type,
             )
-            answer = fallback_agent.run(prompt)
-        else:
+        except Exception as e:
+            last_error = e
+            continue
+
+        try:
+            answer = agent.run(prompt)
+            return answer, len(df)
+        except Exception as e:
+            err = str(e)
+            if (
+                ("python_repl_ast" in err and "missing properties: 'query'" in err)
+                or "Tool choice is none, but model called a tool" in err
+            ):
+                last_error = e
+                continue
             raise
-    return answer, len(df)
+
+    raise last_error or RuntimeError("Failed to generate response with all agent fallbacks")
 
 
 class handler(BaseHTTPRequestHandler):

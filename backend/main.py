@@ -342,6 +342,27 @@ def create_agent(df: pd.DataFrame, agent_type: str = "tool-calling"):
     return agent
 
 
+def _select_agent_candidates() -> list:
+    """Choose agent modes by provider/model compatibility."""
+    from langchain.agents import AgentType as LegacyAgentType
+
+    is_groq = "api.groq.com" in OPENROUTER_BASE_URL.lower()
+    is_gpt_oss = "gpt-oss" in OPENROUTER_MODEL.lower()
+
+    if is_groq or is_gpt_oss:
+        return [
+            "zero-shot-react-description",
+            "tool-calling",
+            LegacyAgentType.OPENAI_FUNCTIONS,
+        ]
+
+    return [
+        "tool-calling",
+        LegacyAgentType.OPENAI_FUNCTIONS,
+        "zero-shot-react-description",
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Conversation memory store (in-process; resets on server restart)
 # ---------------------------------------------------------------------------
@@ -437,10 +458,7 @@ async def chat(request: ChatRequest):
         # Step 1: Get fresh survey data
         df = get_cached_dataframe()
 
-        # Step 2: Build agent
-        agent = create_agent(df, agent_type="tool-calling")
-
-        # Step 3: Build prompt with conversation history for context
+        # Step 2: Build prompt with conversation history for context
         memory = get_or_create_memory(request.session_id)
         history = memory.load_memory_variables({}).get("chat_history", "")
 
@@ -454,21 +472,29 @@ async def chat(request: ChatRequest):
 
         logger.info(f"[{request.session_id}] Q: {request.message}")
 
-        # Step 4: Run agent
-        try:
-            result = agent.run(full_prompt)
-        except Exception as e:
-            err = str(e)
-            # Some Groq/OpenAI-compatible models can emit tool args that fail
-            # strict schema validation for python_repl_ast. Retry with ReAct mode.
-            if "python_repl_ast" in err and "missing properties: 'query'" in err:
-                logger.warning(
-                    "Tool-call schema mismatch detected. Retrying with ReAct agent mode."
-                )
-                fallback_agent = create_agent(df, agent_type="zero-shot-react-description")
-                result = fallback_agent.run(full_prompt)
-            else:
+        # Step 3: Build and run agent with provider-aware fallbacks
+        last_error = None
+        result = None
+        for agent_type in _select_agent_candidates():
+            try:
+                agent = create_agent(df, agent_type=agent_type)
+                result = agent.run(full_prompt)
+                break
+            except Exception as e:
+                err = str(e)
+                if (
+                    ("python_repl_ast" in err and "missing properties: 'query'" in err)
+                    or "Tool choice is none, but model called a tool" in err
+                ):
+                    logger.warning(
+                        f"Agent mode '{agent_type}' incompatible for this model; retrying fallback mode."
+                    )
+                    last_error = e
+                    continue
                 raise
+
+        if result is None:
+            raise last_error or RuntimeError("Failed to generate response with all agent fallbacks")
 
         # Step 5: Save to memory
         memory.save_context(
