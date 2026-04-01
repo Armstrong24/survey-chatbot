@@ -280,6 +280,23 @@ Q16 → What would encourage switch to sustainable bags
 """
 
 
+def _create_llm() -> ChatOpenAI:
+    """Create ChatOpenAI client with provider-specific headers."""
+    default_headers = {}
+    if OPENROUTER_SITE_URL:
+        default_headers["HTTP-Referer"] = OPENROUTER_SITE_URL
+    if OPENROUTER_APP_NAME:
+        default_headers["X-Title"] = OPENROUTER_APP_NAME
+
+    return ChatOpenAI(
+        model=OPENROUTER_MODEL,
+        api_key=OPENROUTER_API_KEY,
+        base_url=OPENROUTER_BASE_URL,
+        temperature=0,
+        default_headers=default_headers or None,
+    )
+
+
 def create_agent(df: pd.DataFrame, agent_type: str = "tool-calling"):
     """
     Build a LangChain Pandas DataFrame Agent using OpenRouter.
@@ -293,21 +310,8 @@ def create_agent(df: pd.DataFrame, agent_type: str = "tool-calling"):
             "and add it to your .env file."
         )
 
-    # OpenRouter uses the OpenAI-compatible API.
-    # temperature=0 ensures deterministic, factual answers.
-    default_headers = {}
-    if OPENROUTER_SITE_URL:
-        default_headers["HTTP-Referer"] = OPENROUTER_SITE_URL
-    if OPENROUTER_APP_NAME:
-        default_headers["X-Title"] = OPENROUTER_APP_NAME
-
-    llm = ChatOpenAI(
-        model=OPENROUTER_MODEL,
-        api_key=OPENROUTER_API_KEY,
-        base_url=OPENROUTER_BASE_URL,
-        temperature=0,
-        default_headers=default_headers or None,
-    )
+    # OpenAI-compatible client with deterministic output.
+    llm = _create_llm()
 
     common_kwargs = dict(
         llm=llm,
@@ -339,6 +343,20 @@ def create_agent(df: pd.DataFrame, agent_type: str = "tool-calling"):
         )
 
     return agent
+
+
+def _build_df_summary(df: pd.DataFrame, max_cols: int = 12) -> str:
+    """Create a compact text summary so LLM can answer without tool execution."""
+    parts = [f"Total responses: {len(df)}", f"Columns: {', '.join(df.columns.tolist())}"]
+    for col in df.columns[:max_cols]:
+        series = df[col].fillna("").astype(str).str.strip()
+        non_empty = series[series != ""]
+        if non_empty.empty:
+            continue
+        top = non_empty.value_counts().head(5)
+        top_text = "; ".join([f"{k} ({v})" for k, v in top.items()])
+        parts.append(f"{col}: {top_text}")
+    return "\n".join(parts)
 
 
 def _select_agent_candidates() -> list:
@@ -477,7 +495,17 @@ async def chat(request: ChatRequest):
                 raise
 
         if result is None:
-            raise last_error or RuntimeError("Failed to generate response with all agent fallbacks")
+            # Final fallback: answer directly without tool execution.
+            summary = _build_df_summary(df)
+            fallback_prompt = (
+                "You are analyzing survey data. Use ONLY the provided summary. "
+                "If exact value is not available, say so briefly and provide the closest insight.\n\n"
+                f"Survey summary:\n{summary}\n\n"
+                f"Previous conversation:\n{history}\n\n"
+                f"User question: {request.message}"
+            )
+            raw = _create_llm().invoke(fallback_prompt)
+            result = getattr(raw, "content", str(raw))
 
         # Step 5: Save to memory
         memory.save_context(
