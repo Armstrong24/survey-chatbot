@@ -107,11 +107,9 @@ def get_answer(message: str, history: str) -> tuple[str, int]:
     is_gpt_oss = "gpt-oss" in OPENROUTER_MODEL.lower()
 
     if is_groq or is_gpt_oss:
-        # Groq + GPT-OSS is more stable with ReAct-style agenting.
+        # Groq + GPT-OSS: force ReAct-only to avoid tool-call schema mismatch errors.
         agent_candidates = [
             LegacyAgentType.ZERO_SHOT_REACT_DESCRIPTION,
-            "tool-calling",
-            LegacyAgentType.OPENAI_FUNCTIONS,
         ]
     else:
         agent_candidates = [

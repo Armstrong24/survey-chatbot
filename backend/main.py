@@ -352,8 +352,6 @@ def _select_agent_candidates() -> list:
     if is_groq or is_gpt_oss:
         return [
             "zero-shot-react-description",
-            "tool-calling",
-            LegacyAgentType.OPENAI_FUNCTIONS,
         ]
 
     return [
