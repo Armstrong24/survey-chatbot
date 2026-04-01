@@ -342,22 +342,8 @@ def create_agent(df: pd.DataFrame, agent_type: str = "tool-calling"):
 
 
 def _select_agent_candidates() -> list:
-    """Choose agent modes by provider/model compatibility."""
-    from langchain.agents import AgentType as LegacyAgentType
-
-    is_groq = "api.groq.com" in OPENROUTER_BASE_URL.lower()
-    is_gpt_oss = "gpt-oss" in OPENROUTER_MODEL.lower()
-
-    if is_groq or is_gpt_oss:
-        return [
-            "zero-shot-react-description",
-        ]
-
-    return [
-        "tool-calling",
-        LegacyAgentType.OPENAI_FUNCTIONS,
-        "zero-shot-react-description",
-    ]
+    """Use the most stable agent mode across providers/models."""
+    return ["zero-shot-react-description"]
 
 
 # ---------------------------------------------------------------------------

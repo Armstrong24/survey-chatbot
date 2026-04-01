@@ -100,22 +100,8 @@ def get_answer(message: str, history: str) -> tuple[str, int]:
     )
 
     prompt = f"Previous conversation:\n{history}\n\nUser: {message}" if history else message
-    from langchain.agents import AgentType as LegacyAgentType
-
-    is_groq = "api.groq.com" in OPENROUTER_BASE_URL.lower()
-    is_gpt_oss = "gpt-oss" in OPENROUTER_MODEL.lower()
-
-    if is_groq or is_gpt_oss:
-        # Groq + GPT-OSS: force ReAct-only to avoid tool-call schema mismatch errors.
-        agent_candidates = [
-            "zero-shot-react-description",
-        ]
-    else:
-        agent_candidates = [
-            "tool-calling",
-            LegacyAgentType.OPENAI_FUNCTIONS,
-            "zero-shot-react-description",
-        ]
+    # Force ReAct-only mode for stability across OpenAI-compatible providers.
+    agent_candidates = ["zero-shot-react-description"]
 
     last_error = None
     for agent_type in agent_candidates:
