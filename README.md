@@ -6,7 +6,7 @@ Ask plain-English questions about live survey responses and get data-backed answ
 
 - Frontend: Next.js 14, React 18, TypeScript, Tailwind CSS
 - Backend: FastAPI, Pandas, LangChain Experimental Agent
-- LLM Provider: OpenRouter (OpenAI-compatible endpoint)
+- LLM Provider: Groq (OpenAI-compatible endpoint)
 - Data Source: Google Sheets API (reads survey responses from a sheet tab)
 
 ## Requirements
@@ -19,7 +19,7 @@ Ask plain-English questions about live survey responses and get data-backed answ
 
 ### Runtime Requirements
 
-- OpenRouter API key
+- Groq API key
 - Google Sheets API key
 - Google Sheet ID and tab name
 
@@ -46,11 +46,11 @@ Ask plain-English questions about live survey responses and get data-backed answ
 
 Copy `backend/.env.example` to `backend/.env` and set the values:
 
-- `OPENROUTER_API_KEY` (required)
-- `OPENROUTER_MODEL` (example: `qwen/qwen3.6-plus-preview:free`)
-- `OPENROUTER_BASE_URL` (default: `https://openrouter.ai/api/v1`)
-- `OPENROUTER_SITE_URL` (optional)
-- `OPENROUTER_APP_NAME` (optional)
+- `OPENROUTER_API_KEY` (required, use your Groq API key here)
+- `OPENROUTER_MODEL` (example: `openai/gpt-oss-120b`)
+- `OPENROUTER_BASE_URL` (default: `https://api.groq.com/openai/v1`)
+- `OPENROUTER_SITE_URL` (optional, generally not required for Groq)
+- `OPENROUTER_APP_NAME` (optional, generally not required for Groq)
 - `GOOGLE_API_KEY` (required)
 - `GOOGLE_SHEET_ID` (required)
 - `GOOGLE_SHEET_TAB` (default: `Form Responses 1`)
@@ -72,7 +72,7 @@ Open two terminals: one for backend, one for frontend.
 cd backend
 "C:/Program Files/Python313/python.exe" -m pip install -r requirements.txt
 Copy-Item .env.example .env -Force
-# Edit .env and add your OPENROUTER_API_KEY + Google Sheets values
+# Edit .env and add your Groq API key (in OPENROUTER_API_KEY) + Google Sheets values
 & "C:/Program Files/Python313/python.exe" main.py
 ```
 
@@ -99,7 +99,7 @@ Frontend should be available at `http://localhost:3000` (or `http://localhost:30
 1. The frontend sends chat requests to the FastAPI backend.
 2. The backend fetches survey rows from Google Sheets using `GOOGLE_API_KEY`, `GOOGLE_SHEET_ID`, and `GOOGLE_SHEET_TAB`.
 3. Rows are converted into a Pandas DataFrame and cached for `CACHE_TTL_SECONDS`.
-4. A LangChain Pandas DataFrame agent uses OpenRouter as the model provider to compute answers from live data.
+4. A LangChain Pandas DataFrame agent uses Groq as the model provider to compute answers from live data.
 5. Session-based in-memory chat history is included so follow-up questions keep context.
 6. The frontend periodically calls `/stats` to show the latest response count.
 
