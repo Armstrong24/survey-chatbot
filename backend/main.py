@@ -315,7 +315,6 @@ def create_agent(df: pd.DataFrame, agent_type: str = "tool-calling"):
         prefix=AGENT_PREFIX,
         verbose=True,               # Set False in production to reduce server logs
         allow_dangerous_code=True,  # Required to let the agent run pandas code
-        handle_parsing_errors=True, # Gracefully handles LLM formatting errors
         max_iterations=10,          # Prevents infinite loops
     )
 

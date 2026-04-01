@@ -96,7 +96,6 @@ def get_answer(message: str, history: str) -> tuple[str, int]:
         prefix=AGENT_PREFIX,
         verbose=False,
         allow_dangerous_code=True,
-        handle_parsing_errors=True,
         max_iterations=10,
     )
 
@@ -109,13 +108,13 @@ def get_answer(message: str, history: str) -> tuple[str, int]:
     if is_groq or is_gpt_oss:
         # Groq + GPT-OSS: force ReAct-only to avoid tool-call schema mismatch errors.
         agent_candidates = [
-            LegacyAgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            "zero-shot-react-description",
         ]
     else:
         agent_candidates = [
             "tool-calling",
             LegacyAgentType.OPENAI_FUNCTIONS,
-            LegacyAgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            "zero-shot-react-description",
         ]
 
     last_error = None
