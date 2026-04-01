@@ -17,6 +17,7 @@ SETUP CHECKLIST (read before running):
 import os
 import time
 import logging
+import re
 from typing import Optional
 from pathlib import Path
 
@@ -365,6 +366,38 @@ def _build_df_summary(df: pd.DataFrame, top_n: int = 10) -> str:
     return "\n".join(parts)
 
 
+def _is_general_chat(message: str) -> bool:
+    """Detect casual prompts that should bypass dataframe-agent parsing."""
+    m = message.strip().lower()
+    patterns = [
+        r"^thanks?\b",
+        r"^thank\s+you\b",
+        r"^ok(ay)?\b",
+        r"^hi\b|^hello\b|^hey\b",
+        r"\bhow are you\b",
+        r"\bwho are you\b",
+        r"\bwhat can you do\b",
+        r"\bgood (morning|afternoon|evening|night)\b",
+    ]
+    return any(re.search(p, m) for p in patterns)
+
+
+def _direct_chat_reply(message: str, history: str, df: pd.DataFrame) -> str:
+    """Fallback plain response path that avoids tool/output parser issues."""
+    summary = _build_df_summary(df, top_n=5)
+    prompt = (
+        "You are a helpful assistant for a Pune plastic-bag survey chatbot. "
+        "If the user is chatting casually, respond naturally and briefly. "
+        "If the user asks a survey question, answer from the survey summary only. "
+        "Do not use HTML or code blocks.\n\n"
+        f"Survey summary:\n{summary}\n\n"
+        f"Previous conversation:\n{history}\n\n"
+        f"User message: {message}"
+    )
+    raw = _create_llm().invoke(prompt)
+    return getattr(raw, "content", str(raw))
+
+
 def _select_agent_candidates() -> list:
     """Use the most stable agent mode across providers/models."""
     return ["zero-shot-react-description"]
@@ -477,6 +510,18 @@ async def chat(request: ChatRequest):
         else:
             full_prompt = request.message
 
+        if _is_general_chat(request.message):
+            result = _direct_chat_reply(request.message, history, df)
+            memory.save_context(
+                {"input": request.message},
+                {"output": result},
+            )
+            return ChatResponse(
+                response=result,
+                session_id=request.session_id,
+                total_responses=len(df),
+            )
+
         logger.info(f"[{request.session_id}] Q: {request.message}")
 
         # Step 3: Build and run agent with provider-aware fallbacks
@@ -489,6 +534,12 @@ async def chat(request: ChatRequest):
                 break
             except Exception as e:
                 err = str(e)
+                if (
+                    "Could not parse LLM output" in err
+                    or "output parsing error occurred" in err
+                ):
+                    result = _direct_chat_reply(request.message, history, df)
+                    break
                 if (
                     ("python_repl_ast" in err and "missing properties: 'query'" in err)
                     or "Tool choice is none, but model called a tool" in err
