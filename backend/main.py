@@ -257,6 +257,12 @@ You have access to a live pandas DataFrame called `df` containing all survey res
 8. If you cannot find a column, run df.columns.tolist() to see available columns,
    then pick the closest match and explain which column you used.
 
+9. Output formatting rules:
+    - Do NOT use HTML tags (no <br>, <table>, etc.).
+    - Do NOT include code blocks.
+    - Use short headings and plain bullets.
+    - Keep spacing compact and readable.
+
 =================== SURVEY QUESTION → COLUMN MAPPING ========================
 
 Q1  → Age Group

@@ -20,6 +20,11 @@ interface Props {
 function normalizeMessageContent(content: string): string {
   let text = content;
 
+  // Convert HTML line breaks/tags to plain readable text.
+  text = text.replace(/<br\s*\/?>/gi, "\n");
+  text = text.replace(/<\/(p|div|li|tr|h1|h2|h3|h4|h5|h6)>/gi, "\n");
+  text = text.replace(/<[^>]+>/g, "");
+
   // Normalize odd spacing chars that often appear in LLM output.
   text = text
     .replace(/[\u00A0\u202F\u2007]/g, " ")

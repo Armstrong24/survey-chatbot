@@ -48,6 +48,11 @@ CRITICAL RULES:
 5. Always mention the current total number of responses.
 6. Give clear, conversational answers.
 7. If you cannot find a column, run df.columns.tolist() first.
+8. Output formatting rules:
+    - Do NOT use HTML tags (no <br>, <table>, etc.).
+    - Do NOT include code blocks.
+    - Use short headings and plain bullets.
+    - Keep spacing compact and readable.
 """
 
 
