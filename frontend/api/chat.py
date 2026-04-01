@@ -74,15 +74,15 @@ def load_df():
     return _cached_df
 
 
-def _build_df_summary(df: pd.DataFrame, max_cols: int = 12) -> str:
+def _build_df_summary(df: pd.DataFrame, top_n: int = 10) -> str:
     """Create a compact text summary so LLM can answer without tool execution."""
     parts = [f"Total responses: {len(df)}", f"Columns: {', '.join(df.columns.tolist())}"]
-    for col in df.columns[:max_cols]:
+    for col in df.columns:
         series = df[col].fillna("").astype(str).str.strip()
         non_empty = series[series != ""]
         if non_empty.empty:
             continue
-        top = non_empty.value_counts().head(5)
+        top = non_empty.value_counts().head(top_n)
         top_text = "; ".join([f"{k} ({v})" for k, v in top.items()])
         parts.append(f"{col}: {top_text}")
     return "\n".join(parts)
@@ -145,6 +145,7 @@ def get_answer(message: str, history: str) -> tuple[str, int]:
     summary = _build_df_summary(df)
     fallback_prompt = (
         "You are analyzing survey data. Use ONLY the provided summary. "
+        "Answer directly with counts/percentages when available. "
         "If exact value is not available, say so briefly and provide the closest insight.\n\n"
         f"Survey summary:\n{summary}\n\n"
         f"Previous conversation:\n{history}\n\n"

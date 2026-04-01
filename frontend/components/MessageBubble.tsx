@@ -32,7 +32,11 @@ function normalizeMessageContent(content: string): string {
   // If model wraps formula in [ ... ], show it as plain text block.
   text = text.replace(/\[\s*((?:.|\n)*?\\frac(?:.|\n)*?)\s*\]/g, "$1");
 
-  return text;
+  // Collapse over-spaced output while keeping paragraph breaks readable.
+  text = text.replace(/[ \t]+\n/g, "\n");
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  return text.trim();
 }
 
 export default function MessageBubble({ message }: Props) {
