@@ -280,7 +280,7 @@ Q16 → What would encourage switch to sustainable bags
 """
 
 
-def create_agent(df: pd.DataFrame):
+def create_agent(df: pd.DataFrame, agent_type: str = "tool-calling"):
     """
     Build a LangChain Pandas DataFrame Agent using OpenRouter.
 
@@ -324,14 +324,19 @@ def create_agent(df: pd.DataFrame):
     try:
         agent = create_pandas_dataframe_agent(
             **common_kwargs,
-            agent_type="tool-calling",
+            agent_type=agent_type,
         )
     except Exception:
         from langchain.agents import AgentType as LegacyAgentType
 
+        fallback_type = (
+            LegacyAgentType.OPENAI_FUNCTIONS
+            if agent_type == "tool-calling"
+            else LegacyAgentType.ZERO_SHOT_REACT_DESCRIPTION
+        )
         agent = create_pandas_dataframe_agent(
             **common_kwargs,
-            agent_type=LegacyAgentType.OPENAI_FUNCTIONS,
+            agent_type=fallback_type,
         )
 
     return agent
@@ -433,7 +438,7 @@ async def chat(request: ChatRequest):
         df = get_cached_dataframe()
 
         # Step 2: Build agent
-        agent = create_agent(df)
+        agent = create_agent(df, agent_type="tool-calling")
 
         # Step 3: Build prompt with conversation history for context
         memory = get_or_create_memory(request.session_id)
@@ -450,7 +455,20 @@ async def chat(request: ChatRequest):
         logger.info(f"[{request.session_id}] Q: {request.message}")
 
         # Step 4: Run agent
-        result = agent.run(full_prompt)
+        try:
+            result = agent.run(full_prompt)
+        except Exception as e:
+            err = str(e)
+            # Some Groq/OpenAI-compatible models can emit tool args that fail
+            # strict schema validation for python_repl_ast. Retry with ReAct mode.
+            if "python_repl_ast" in err and "missing properties: 'query'" in err:
+                logger.warning(
+                    "Tool-call schema mismatch detected. Retrying with ReAct agent mode."
+                )
+                fallback_agent = create_agent(df, agent_type="zero-shot-react-description")
+                result = fallback_agent.run(full_prompt)
+            else:
+                raise
 
         # Step 5: Save to memory
         memory.save_context(

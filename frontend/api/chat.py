@@ -113,7 +113,22 @@ def get_answer(message: str, history: str) -> tuple[str, int]:
             agent_type=LegacyAgentType.OPENAI_FUNCTIONS,
         )
     prompt = f"Previous conversation:\n{history}\n\nUser: {message}" if history else message
-    answer = agent.run(prompt)
+    try:
+        answer = agent.run(prompt)
+    except Exception as e:
+        err = str(e)
+        if "python_repl_ast" in err and "missing properties: 'query'" in err:
+            # Some OpenAI-compatible models can emit tool args that fail strict
+            # schema validation. Retry with ReAct mode to avoid tool-call schema issues.
+            from langchain.agents import AgentType as LegacyAgentType
+
+            fallback_agent = create_pandas_dataframe_agent(
+                **common_kwargs,
+                agent_type=LegacyAgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            )
+            answer = fallback_agent.run(prompt)
+        else:
+            raise
     return answer, len(df)
 
 
