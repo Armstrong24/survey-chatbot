@@ -129,6 +129,11 @@ export default function SurveyChart({ config }: Props) {
   const shouldShowLegend =
     Boolean(config.show_legend) &&
     ["pie", "donut", "stacked_bar"].includes(config.chart_type || "");
+  const pieTotal = data.reduce((sum, item) => sum + Number(item.value || 0), 0);
+  const truncateLegendLabel = (value: string) => {
+    const max = isMobile ? 28 : 44;
+    return value.length > max ? `${value.slice(0, max - 1)}...` : value;
+  };
 
   const renderBars = (points: ChartPoint[]) =>
     points.map((entry, index) => (
@@ -228,7 +233,7 @@ export default function SurveyChart({ config }: Props) {
                 label={({ category, percent }: { category?: string; percent?: number }) =>
                   isMobile
                     ? `${(((percent ?? 0) as number) * 100).toFixed(0)}%`
-                    : `${category || "Category"}: ${(((percent ?? 0) as number) * 100).toFixed(0)}%`
+                    : `${truncateCategory(category || "Category")}: ${(((percent ?? 0) as number) * 100).toFixed(0)}%`
                 }
                 labelLine={!isMobile}
               >
@@ -247,7 +252,6 @@ export default function SurveyChart({ config }: Props) {
                   payload: { payload?: { category?: string } }
                 ) => [String(value), String(payload?.payload?.category || "Value")]}
               />
-              {shouldShowLegend && <Legend wrapperStyle={{ fontSize: axisFontSize, color: tickColor }} />}
             </PieChart>
           </ResponsiveContainer>
         );
@@ -294,6 +298,23 @@ export default function SurveyChart({ config }: Props) {
           {renderChart()}
         </div>
       </div>
+
+      {(config.chart_type === "pie" || config.chart_type === "donut") && shouldShowLegend && data.length > 0 && (
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-200">
+          {data.map((entry, index) => {
+            const color = colors[(entry.color_index ?? index) % colors.length];
+            const pct = pieTotal > 0 ? Math.round((Number(entry.value || 0) / pieTotal) * 100) : 0;
+            return (
+              <div key={`${entry.category}-${index}`} className="flex items-start gap-2 min-w-0">
+                <span className="mt-[4px] h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                <span className="leading-4 break-words">
+                  {truncateLegendLabel(String(entry.category || "Category"))} ({pct}%)
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {config.chart_type !== "pie" && config.chart_type !== "donut" && (config.x_label || config.y_label) && (
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-300">
