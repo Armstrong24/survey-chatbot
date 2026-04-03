@@ -608,7 +608,89 @@ def _sanitize_chart_config(config: dict) -> dict:
     }
 
 
+def _is_time_series_request(user_message: str) -> bool:
+    msg = user_message.lower()
+    time_words = ["timestamp", "time", "date", "daily", "monthly", "trend", "over time"]
+    response_words = ["response", "responses", "count", "counts", "submissions"]
+    return any(w in msg for w in time_words) and any(w in msg for w in response_words)
+
+
+def _find_time_column(df: pd.DataFrame) -> tuple[Optional[str], Optional[pd.Series]]:
+    name_hint_cols = [
+        col
+        for col in df.columns
+        if any(k in col.lower() for k in ["timestamp", "date", "time", "submitted", "created"])
+    ]
+    candidate_cols = name_hint_cols if name_hint_cols else list(df.columns)
+
+    for col in candidate_cols:
+        raw = df[col].fillna("").astype(str).str.strip()
+        parsed = pd.to_datetime(raw, errors="coerce")
+        valid_ratio = parsed.notna().mean()
+        if valid_ratio >= 0.5:
+            return col, parsed
+
+    return None, None
+
+
+def _build_time_series_fallback(df: pd.DataFrame, user_message: str) -> Optional[dict]:
+    col, parsed = _find_time_column(df)
+    if not col or parsed is None:
+        return None
+
+    ts = parsed.dropna()
+    if ts.empty:
+        return None
+
+    # Use daily counts for short ranges; switch to monthly when daily points are too many.
+    day_counts = ts.dt.strftime("%Y-%m-%d").value_counts().sort_index()
+    if len(day_counts) > 20:
+        series = ts.dt.to_period("M").astype(str).value_counts().sort_index()
+        x_label = f"{col} (month)"
+        note = "Auto-aggregated by month for readability"
+    else:
+        series = day_counts
+        x_label = f"{col} (day)"
+        note = "Counts of responses over time"
+
+    if len(series) > 20:
+        series = series.tail(20)
+        note = "Showing latest 20 periods"
+
+    data = [
+        {
+            "category": str(idx),
+            "value": round(float(val), 1),
+            "color_index": i % len(_CHART_PALETTE),
+        }
+        for i, (idx, val) in enumerate(series.items())
+    ]
+
+    title = f"How do responses change over {col}?"
+    if "over" in user_message.lower() and "timestamp" in user_message.lower():
+        title = "How do responses change over timestamp?"
+
+    return {
+        "chart_type": "line",
+        "title": title,
+        "x_label": x_label,
+        "y_label": "Number of Responses",
+        "legend_title": "Responses",
+        "colors": _CHART_PALETTE,
+        "data": data,
+        "tooltip_format": "{category}: {value} responses",
+        "show_grid": True,
+        "show_legend": False,
+        "note": note,
+    }
+
+
 def _generate_chart_config(df: pd.DataFrame, user_message: str) -> dict:
+    if _is_time_series_request(user_message):
+        fallback = _build_time_series_fallback(df, user_message)
+        if fallback:
+            return fallback
+
     schema_hint = _build_schema_hint(df)
     column_profile = _build_column_profile(df)
     prompt = (
@@ -620,7 +702,14 @@ def _generate_chart_config(df: pd.DataFrame, user_message: str) -> dict:
     raw = _create_llm().invoke(prompt)
     content = getattr(raw, "content", str(raw))
     parsed = json.loads(_extract_json_object(content))
-    return _sanitize_chart_config(parsed)
+    sanitized = _sanitize_chart_config(parsed)
+
+    if "error" in sanitized and _is_time_series_request(user_message):
+        fallback = _build_time_series_fallback(df, user_message)
+        if fallback:
+            return fallback
+
+    return sanitized
 
 
 # ---------------------------------------------------------------------------
