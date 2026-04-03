@@ -97,6 +97,12 @@ export default function SurveyChart({ config }: Props) {
 
   const data = Array.isArray(config.data) ? config.data : [];
   const chartHeight = isMobile ? 270 : 320;
+  const tickColor = "#64748b";
+  const axisFontSize = isMobile ? 10 : 12;
+  const truncateCategory = (value: string) => {
+    const max = isMobile ? 14 : 24;
+    return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+  };
   const needsWideCanvas = ["bar", "horizontal_bar", "line", "area", "stacked_bar"].includes(
     config.chart_type || ""
   ) && data.length > 6;
@@ -120,6 +126,9 @@ export default function SurveyChart({ config }: Props) {
   const stackedSeriesKeys = Array.from(
     new Set(data.map((d) => d.series).filter((v): v is string => typeof v === "string" && v.trim().length > 0))
   );
+  const shouldShowLegend =
+    Boolean(config.show_legend) &&
+    ["pie", "donut", "stacked_bar"].includes(config.chart_type || "");
 
   const renderBars = (points: ChartPoint[]) =>
     points.map((entry, index) => (
@@ -136,22 +145,30 @@ export default function SurveyChart({ config }: Props) {
             <BarChart
               data={data}
               layout={isHorizontal ? "vertical" : "horizontal"}
-              margin={{ top: 10, right: isMobile ? 8 : 18, bottom: isMobile ? 36 : 25, left: isMobile ? 8 : 18 }}
+              margin={{ top: 10, right: isMobile ? 8 : 18, bottom: isMobile ? 36 : 20, left: isMobile ? 8 : 18 }}
             >
               {config.show_grid && <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />}
               {isHorizontal ? (
                 <>
-                  <XAxis type="number" label={isMobile ? undefined : { value: config.y_label || "", position: "insideBottom", offset: -8 }} tick={{ fontSize: isMobile ? 10 : 12 }} />
-                  <YAxis type="category" dataKey="category" width={isMobile ? 90 : 120} label={isMobile ? undefined : { value: config.x_label || "", angle: -90, position: "insideLeft" }} tick={{ fontSize: isMobile ? 10 : 12 }} />
+                  <XAxis type="number" tick={{ fontSize: axisFontSize, fill: tickColor }} />
+                  <YAxis type="category" dataKey="category" width={isMobile ? 95 : 135} tick={{ fontSize: axisFontSize, fill: tickColor }} tickFormatter={(value) => truncateCategory(String(value))} />
                 </>
               ) : (
                 <>
-                  <XAxis dataKey="category" interval={0} angle={isMobile ? -32 : -20} textAnchor="end" height={isMobile ? 64 : 50} tick={{ fontSize: isMobile ? 10 : 12 }} label={isMobile ? undefined : { value: config.x_label || "", position: "insideBottom", offset: -8 }} />
-                  <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} label={isMobile ? undefined : { value: config.y_label || "", angle: -90, position: "insideLeft" }} />
+                  <XAxis dataKey="category" interval={0} angle={isMobile ? -32 : -18} textAnchor="end" height={isMobile ? 64 : 48} tick={{ fontSize: axisFontSize, fill: tickColor }} tickFormatter={(value) => truncateCategory(String(value))} />
+                  <YAxis tick={{ fontSize: axisFontSize, fill: tickColor }} />
                 </>
               )}
-              <Tooltip formatter={(value: number | string) => [String(value), config.legend_title || "Value"]} />
-              {config.show_legend && <Legend />}
+              <Tooltip
+                contentStyle={{
+                  borderRadius: "10px",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 8px 24px rgba(15,23,42,0.14)",
+                  fontSize: "12px",
+                }}
+                formatter={(value: number | string) => [String(value), config.legend_title || "Value"]}
+              />
+              {shouldShowLegend && <Legend wrapperStyle={{ fontSize: axisFontSize, color: tickColor }} />}
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                 {renderBars(data)}
               </Bar>
@@ -164,10 +181,10 @@ export default function SurveyChart({ config }: Props) {
           <ResponsiveContainer width="100%" height={chartHeight}>
             <BarChart data={stackedData} margin={{ top: 10, right: isMobile ? 8 : 18, bottom: isMobile ? 36 : 25, left: isMobile ? 8 : 18 }}>
               {config.show_grid && <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />}
-              <XAxis dataKey="category" interval={0} angle={isMobile ? -32 : -20} textAnchor="end" height={isMobile ? 64 : 50} tick={{ fontSize: isMobile ? 10 : 12 }} />
-              <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+              <XAxis dataKey="category" interval={0} angle={isMobile ? -32 : -18} textAnchor="end" height={isMobile ? 64 : 50} tick={{ fontSize: axisFontSize, fill: tickColor }} tickFormatter={(value) => truncateCategory(String(value))} />
+              <YAxis tick={{ fontSize: axisFontSize, fill: tickColor }} />
               <Tooltip />
-              {config.show_legend && <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />}
+              {shouldShowLegend && <Legend wrapperStyle={{ fontSize: axisFontSize, color: tickColor }} />}
               {stackedSeriesKeys.map((series, idx) => (
                 <Bar key={series} dataKey={series} stackId="stack" fill={colors[idx % colors.length]} />
               ))}
@@ -182,10 +199,10 @@ export default function SurveyChart({ config }: Props) {
           <ResponsiveContainer width="100%" height={chartHeight}>
             <Chart data={data} margin={{ top: 10, right: isMobile ? 8 : 18, bottom: isMobile ? 36 : 25, left: isMobile ? 8 : 18 }}>
               {config.show_grid && <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />}
-              <XAxis dataKey="category" interval={0} angle={isMobile ? -32 : -20} textAnchor="end" height={isMobile ? 64 : 50} tick={{ fontSize: isMobile ? 10 : 12 }} label={isMobile ? undefined : { value: config.x_label || "", position: "insideBottom", offset: -8 }} />
-              <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} label={isMobile ? undefined : { value: config.y_label || "", angle: -90, position: "insideLeft" }} />
+              <XAxis dataKey="category" interval={0} angle={isMobile ? -32 : -18} textAnchor="end" height={isMobile ? 64 : 50} tick={{ fontSize: axisFontSize, fill: tickColor }} tickFormatter={(value) => truncateCategory(String(value))} />
+              <YAxis tick={{ fontSize: axisFontSize, fill: tickColor }} />
               <Tooltip />
-              {config.show_legend && <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />}
+              {shouldShowLegend && <Legend wrapperStyle={{ fontSize: axisFontSize, color: tickColor }} />}
               {config.chart_type === "area" ? (
                 <Area type="monotone" dataKey="value" stroke={colors[0]} fill={`${colors[0]}33`} strokeWidth={2} />
               ) : (
@@ -218,13 +235,19 @@ export default function SurveyChart({ config }: Props) {
                 {renderBars(data)}
               </Pie>
               <Tooltip
+                contentStyle={{
+                  borderRadius: "10px",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 8px 24px rgba(15,23,42,0.14)",
+                  fontSize: "12px",
+                }}
                 formatter={(
                   value: number | string,
                   _name: string,
                   payload: { payload?: { category?: string } }
                 ) => [String(value), String(payload?.payload?.category || "Value")]}
               />
-              {config.show_legend && <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />}
+              {shouldShowLegend && <Legend wrapperStyle={{ fontSize: axisFontSize, color: tickColor }} />}
             </PieChart>
           </ResponsiveContainer>
         );
@@ -233,10 +256,10 @@ export default function SurveyChart({ config }: Props) {
           <ResponsiveContainer width="100%" height={chartHeight}>
             <ScatterChart margin={{ top: 10, right: isMobile ? 8 : 18, bottom: 25, left: isMobile ? 8 : 18 }}>
               {config.show_grid && <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />}
-              <XAxis type="number" dataKey="x" name={config.x_label || "X"} tick={{ fontSize: isMobile ? 10 : 12 }} />
-              <YAxis type="number" dataKey="y" name={config.y_label || "Y"} tick={{ fontSize: isMobile ? 10 : 12 }} />
+              <XAxis type="number" dataKey="x" name={config.x_label || "X"} tick={{ fontSize: axisFontSize, fill: tickColor }} />
+              <YAxis type="number" dataKey="y" name={config.y_label || "Y"} tick={{ fontSize: axisFontSize, fill: tickColor }} />
               <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-              {config.show_legend && <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />}
+              {shouldShowLegend && <Legend wrapperStyle={{ fontSize: axisFontSize, color: tickColor }} />}
               <Scatter data={data} fill={colors[0]}>
                 {renderBars(data)}
               </Scatter>
@@ -271,6 +294,13 @@ export default function SurveyChart({ config }: Props) {
           {renderChart()}
         </div>
       </div>
+
+      {config.chart_type !== "pie" && config.chart_type !== "donut" && (config.x_label || config.y_label) && (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-300">
+          {config.x_label && <span>X-axis: {config.x_label}</span>}
+          {config.y_label && <span>Y-axis: {config.y_label}</span>}
+        </div>
+      )}
 
       {config.note && (
         <p className="text-xs text-gray-500 mt-3 italic border-l-2 border-indigo-200 pl-3 dark:text-gray-300 dark:border-indigo-500">
