@@ -772,8 +772,7 @@ async def chat(request: ChatRequest):
         )
 
 
-@app.post("/chart", response_model=ChartResponse)
-async def chart(request: ChartRequest):
+async def _handle_chart_request(request: ChartRequest) -> ChartResponse:
     """Generate a structured chart configuration from a natural-language request."""
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
@@ -802,6 +801,17 @@ async def chart(request: ChartRequest):
             status_code=500,
             detail="Unable to generate chart right now. Try a clearer chart request.",
         )
+
+
+@app.post("/chart", response_model=ChartResponse)
+async def chart(request: ChartRequest):
+    return await _handle_chart_request(request)
+
+
+@app.post("/api/chart", response_model=ChartResponse)
+async def api_chart(request: ChartRequest):
+    """Compatibility alias for static deployments expecting /api/* routes."""
+    return await _handle_chart_request(request)
 
 
 @app.delete("/chat/{session_id}")

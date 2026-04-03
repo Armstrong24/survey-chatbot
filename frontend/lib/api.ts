@@ -114,16 +114,36 @@ export async function sendChartRequest(
   message: string,
   sessionId: string
 ): Promise<ChartResponse> {
-  const res = await fetch(`${API_BASE}${API_PREFIX}/chart`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, session_id: sessionId }),
-  });
+  const body = JSON.stringify({ message, session_id: sessionId });
+  const primaryUrl = `${API_BASE}${API_PREFIX}/chart`;
+  const alternateUrl = `${API_BASE}${API_PREFIX ? "" : "/api"}/chart`;
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
+  const callChartApi = async (url: string) => {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      try {
+        const err = JSON.parse(text);
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      } catch {
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+    }
+
+    return res.json() as Promise<ChartResponse>;
+  };
+
+  try {
+    return await callChartApi(primaryUrl);
+  } catch (primaryErr) {
+    if (alternateUrl === primaryUrl) {
+      throw primaryErr;
+    }
+    return callChartApi(alternateUrl);
   }
-
-  return res.json();
 }
