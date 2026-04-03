@@ -10,6 +10,7 @@ import { fetchStats } from "@/lib/api";
 
 interface Props {
   onSuggest: (q: string) => void;
+  onChartSuggest: (q: string) => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -25,7 +26,15 @@ const SUGGESTED_QUESTIONS = [
   "Where do people get plastic bags most often?",
 ];
 
-export default function Sidebar({ onSuggest, isOpen, onClose }: Props) {
+const SUGGESTED_CHARTS = [
+  "Show a bar chart of occupation-wise response counts",
+  "Create a pie chart of reusable bag ownership",
+  "Plot a bar chart for age group distribution",
+  "Show a line chart of responses over timestamp",
+  "Create a donut chart of plastic bag frequency usage",
+];
+
+export default function Sidebar({ onSuggest, onChartSuggest, isOpen, onClose }: Props) {
   const [totalResponses, setTotalResponses] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -52,6 +61,11 @@ export default function Sidebar({ onSuggest, isOpen, onClose }: Props) {
   const handleSuggest = (q: string) => {
     onSuggest(q);
     onClose(); // auto-close sidebar on mobile after clicking a suggestion
+  };
+
+  const handleChartSuggest = (q: string) => {
+    onChartSuggest(q);
+    onClose();
   };
 
   return (
@@ -134,6 +148,21 @@ export default function Sidebar({ onSuggest, isOpen, onClose }: Props) {
                 key={q}
                 onClick={() => handleSuggest(q)}
                 className="text-left text-xs text-gray-600 hover:text-brand-700 hover:bg-brand-50 px-3 py-2 rounded-lg transition-colors border border-transparent hover:border-brand-200 dark:text-gray-300 dark:hover:text-brand-200 dark:hover:bg-brand-900/30 dark:hover:border-brand-800"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-5 mb-2 dark:text-gray-400">
+            Chart prompts
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {SUGGESTED_CHARTS.map((q) => (
+              <button
+                key={q}
+                onClick={() => handleChartSuggest(q)}
+                className="text-left text-xs text-gray-600 hover:text-indigo-700 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors border border-transparent hover:border-indigo-200 dark:text-gray-300 dark:hover:text-indigo-200 dark:hover:bg-indigo-900/30 dark:hover:border-indigo-800"
               >
                 {q}
               </button>

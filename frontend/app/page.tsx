@@ -6,7 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import MessageBubble, { Message } from "@/components/MessageBubble";
 import TypingIndicator from "@/components/TypingIndicator";
 import ThemeToggle from "@/components/ThemeToggle";
-import { sendMessage, clearChat } from "@/lib/api";
+import { sendMessage, clearChat, sendChartRequest } from "@/lib/api";
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "ssr";
@@ -46,7 +46,7 @@ export default function ChatPage() {
   }, [messages, isLoading]);
 
   const handleSend = useCallback(
-    async (text: string) => {
+    async (text: string, mode: "chat" | "chart" = "chat") => {
       const trimmed = text.trim();
       if (!trimmed || isLoading) return;
 
@@ -60,11 +60,24 @@ export default function ChatPage() {
       setIsLoading(true);
 
       try {
-        const data = await sendMessage(trimmed, sessionId);
-        const aiMsg: Message = {
-          id: uuidv4(), role: "assistant", content: data.response, timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+        if (mode === "chart") {
+          const data = await sendChartRequest(trimmed, sessionId);
+          const aiMsg: Message = {
+            id: uuidv4(),
+            role: "assistant",
+            content: data.data.error ? "" : "Here is the chart based on your request.",
+            kind: "chart",
+            chartConfig: data.data,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, aiMsg]);
+        } else {
+          const data = await sendMessage(trimmed, sessionId);
+          const aiMsg: Message = {
+            id: uuidv4(), role: "assistant", content: data.response, timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, aiMsg]);
+        }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
       } finally {
@@ -95,6 +108,7 @@ export default function ChatPage() {
       {/* Sidebar — desktop always visible, mobile slide-in */}
       <Sidebar
         onSuggest={(q) => handleSend(q)}
+        onChartSuggest={(q) => handleSend(q, "chart")}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -187,6 +201,15 @@ export default function ChatPage() {
                 el.style.height = Math.min(el.scrollHeight, 160) + "px";
               }}
             />
+            <button
+              type="button"
+              onClick={() => handleSend(input, "chart")}
+              disabled={isLoading || !input.trim()}
+              className="flex-shrink-0 h-10 sm:h-11 rounded-xl px-3 sm:px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-medium transition-colors shadow-sm dark:disabled:bg-gray-700"
+              aria-label="Generate chart"
+            >
+              Generate Chart
+            </button>
             <button
               type="submit"
               disabled={isLoading || !input.trim()}

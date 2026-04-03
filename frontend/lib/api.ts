@@ -23,6 +23,46 @@ export interface ChatResponse {
   total_responses: number;
 }
 
+export interface ChartPoint {
+  category: string;
+  value: number;
+  color_index?: number;
+  x?: number;
+  y?: number;
+  series?: string;
+}
+
+export interface ChartConfig {
+  chart_type?:
+    | "bar"
+    | "horizontal_bar"
+    | "line"
+    | "pie"
+    | "donut"
+    | "scatter"
+    | "area"
+    | "stacked_bar";
+  title?: string;
+  x_label?: string;
+  y_label?: string;
+  legend_title?: string;
+  colors?: string[];
+  data?: ChartPoint[];
+  tooltip_format?: string;
+  show_grid?: boolean;
+  show_legend?: boolean;
+  note?: string;
+  error?: string;
+  suggestion?: string;
+}
+
+export interface ChartResponse {
+  type: "chart";
+  data: ChartConfig;
+  session_id: string;
+  total_responses: number;
+}
+
 export interface StatsResponse {
   total_responses: number;
   columns: string[];
@@ -65,4 +105,25 @@ export async function fetchStats(): Promise<StatsResponse> {
  */
 export async function clearChat(sessionId: string): Promise<void> {
   await fetch(`${API_BASE}${API_PREFIX}/chat/${sessionId}`, { method: "DELETE" });
+}
+
+/**
+ * Send a chart request to the backend and return chart config.
+ */
+export async function sendChartRequest(
+  message: string,
+  sessionId: string
+): Promise<ChartResponse> {
+  const res = await fetch(`${API_BASE}${API_PREFIX}/chart`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, session_id: sessionId }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+
+  return res.json();
 }

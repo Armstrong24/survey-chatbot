@@ -5,12 +5,16 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import SurveyChart from "@/components/SurveyChart";
+import type { ChartConfig } from "@/lib/api";
 
 export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  kind?: "text" | "chart";
+  chartConfig?: ChartConfig;
 }
 
 interface Props {
@@ -47,6 +51,7 @@ function normalizeMessageContent(content: string): string {
 export default function MessageBubble({ message }: Props) {
   const isUser = message.role === "user";
   const content = isUser ? message.content : normalizeMessageContent(message.content);
+  const isChartMessage = message.kind === "chart" && !isUser;
 
   return (
     <div
@@ -67,15 +72,20 @@ export default function MessageBubble({ message }: Props) {
 
       {/* Bubble */}
       <div
-        className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed ${
+        className={`${isChartMessage ? "max-w-[95%]" : isUser ? "max-w-[86%] sm:max-w-[75%]" : "max-w-[94%] sm:max-w-[75%]"} px-3 sm:px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed ${
           isUser
             ? "bg-brand-600 text-white rounded-br-sm"
             : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
         }`}
       >
-        <div className="chat-markdown">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-        </div>
+        {content && (
+          <div className="chat-markdown">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+          </div>
+        )}
+        {message.kind === "chart" && message.chartConfig && !isUser && (
+          <SurveyChart config={message.chartConfig} />
+        )}
       </div>
     </div>
   );

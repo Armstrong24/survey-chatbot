@@ -63,7 +63,11 @@
 }
 
 .chat-markdown table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border-collapse: collapse;
   margin: 0.6rem 0;
   font-size: 0.85rem;
@@ -74,6 +78,7 @@
   border: 1px solid #e5e7eb;
   padding: 0.4rem 0.5rem;
   text-align: left;
+  white-space: nowrap;
 }
 
 .chat-markdown thead th {
@@ -120,4 +125,20 @@
 }
 .msg-appear {
   animation: fadeInUp 0.25s ease-out;
+}
+
+@media (max-width: 640px) {
+  .chat-markdown {
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  .chat-markdown table {
+    font-size: 0.78rem;
+  }
+
+  .chat-markdown th,
+  .chat-markdown td {
+    padding: 0.35rem 0.45rem;
+  }
 }

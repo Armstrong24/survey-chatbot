@@ -18,6 +18,7 @@ import os
 import time
 import logging
 import re
+import json
 from typing import Optional
 from pathlib import Path
 
@@ -33,6 +34,8 @@ from pydantic import BaseModel
 # LangChain imports
 from langchain_openai import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
+
+from prompts.chart_system_prompt import CHART_SYSTEM_PROMPT
 
 
 class SessionMemory:
@@ -444,6 +447,182 @@ class StatsResponse(BaseModel):
     error: Optional[str] = None
 
 
+class ChartRequest(BaseModel):
+    message: str
+    session_id: str = "default"
+
+
+class ChartResponse(BaseModel):
+    type: str = "chart"
+    data: dict
+    session_id: str
+    total_responses: int
+
+
+_CHART_PALETTE = [
+    "#6366f1",
+    "#8b5cf6",
+    "#ec4899",
+    "#f59e0b",
+    "#10b981",
+    "#3b82f6",
+    "#f43f5e",
+    "#14b8a6",
+    "#64748b",
+    "#0ea5e9",
+]
+
+
+def _series_is_numeric(series: pd.Series) -> bool:
+    numeric = pd.to_numeric(series, errors="coerce")
+    return numeric.notna().sum() >= max(3, int(0.6 * len(series)))
+
+
+def _build_schema_hint(df: pd.DataFrame) -> str:
+    lines: list[str] = []
+    for col in df.columns:
+        series = df[col].fillna("").astype(str).str.strip()
+        non_empty = series[series != ""]
+        if non_empty.empty:
+            lines.append(f"- {col}: empty")
+            continue
+
+        if _series_is_numeric(non_empty):
+            numeric = pd.to_numeric(non_empty, errors="coerce").dropna()
+            lines.append(
+                f"- {col}: numeric (min={numeric.min():.1f}, max={numeric.max():.1f}, non_null={len(numeric)})"
+            )
+        else:
+            unique_count = non_empty.nunique()
+            sample_values = ", ".join(non_empty.value_counts().head(5).index.tolist())
+            lines.append(
+                f"- {col}: categorical (unique={unique_count}, top={sample_values})"
+            )
+    return "\n".join(lines)
+
+
+def _build_column_profile(df: pd.DataFrame) -> str:
+    profile: list[str] = []
+    for col in df.columns:
+        series = df[col].fillna("").astype(str).str.strip()
+        non_empty = series[series != ""]
+        if non_empty.empty:
+            continue
+
+        if _series_is_numeric(non_empty):
+            numeric = pd.to_numeric(non_empty, errors="coerce").dropna()
+            profile.append(
+                f"{col}: mean={numeric.mean():.2f}, median={numeric.median():.2f}, std={numeric.std(ddof=0):.2f}"
+            )
+        else:
+            top = non_empty.value_counts().head(8)
+            top_text = "; ".join([f"{k} ({v})" for k, v in top.items()])
+            profile.append(f"{col}: {top_text}")
+    return "\n".join(profile)
+
+
+def _extract_json_object(raw: str) -> str:
+    text = raw.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?", "", text, flags=re.IGNORECASE).strip()
+        if text.endswith("```"):
+            text = text[:-3].strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        raise ValueError("Model returned invalid JSON payload.")
+    return text[start : end + 1]
+
+
+def _sanitize_chart_config(config: dict) -> dict:
+    if "error" in config:
+        return {
+            "error": str(config.get("error", "Unable to build chart.")),
+            "suggestion": str(config.get("suggestion", "Try rephrasing with exact survey columns.")),
+        }
+
+    chart_type = str(config.get("chart_type", "bar"))
+    allowed_types = {
+        "bar",
+        "horizontal_bar",
+        "line",
+        "pie",
+        "donut",
+        "scatter",
+        "area",
+        "stacked_bar",
+    }
+    if chart_type not in allowed_types:
+        chart_type = "bar"
+
+    colors = config.get("colors") if isinstance(config.get("colors"), list) else []
+    clean_colors = [str(c) for c in colors if isinstance(c, str) and c.startswith("#")]
+    if not clean_colors:
+        clean_colors = _CHART_PALETTE
+
+    raw_data = config.get("data") if isinstance(config.get("data"), list) else []
+    data = []
+    for idx, item in enumerate(raw_data[:20]):
+        if not isinstance(item, dict):
+            continue
+        category = str(item.get("category", "Unknown"))
+        try:
+            value = float(item.get("value", 0))
+        except (TypeError, ValueError):
+            continue
+        data.append(
+            {
+                "category": category,
+                "value": round(value, 1),
+                "color_index": int(item.get("color_index", idx)) % len(clean_colors),
+                "x": item.get("x"),
+                "y": item.get("y"),
+                "series": item.get("series"),
+            }
+        )
+
+    if not data:
+        return {
+            "error": "No chartable data returned.",
+            "suggestion": "Try asking for counts by one survey column.",
+        }
+
+    title = str(config.get("title", "Survey chart?"))
+    if not title.endswith("?"):
+        title = title.rstrip(".") + "?"
+
+    return {
+        "chart_type": chart_type,
+        "title": title,
+        "x_label": str(config.get("x_label", "Category")),
+        "y_label": str(config.get("y_label", "Value")),
+        "legend_title": str(config.get("legend_title", "Survey Data")),
+        "colors": clean_colors,
+        "data": data,
+        "tooltip_format": str(
+            config.get("tooltip_format", "{category}: {value}")
+        ),
+        "show_grid": bool(config.get("show_grid", True)),
+        "show_legend": bool(config.get("show_legend", True)),
+        "note": str(config.get("note", "Generated from current survey responses."))[:140],
+    }
+
+
+def _generate_chart_config(df: pd.DataFrame, user_message: str) -> dict:
+    schema_hint = _build_schema_hint(df)
+    column_profile = _build_column_profile(df)
+    prompt = (
+        CHART_SYSTEM_PROMPT.replace("{{SCHEMA_HINT}}", schema_hint)
+        .replace("{{COLUMN_PROFILE}}", column_profile)
+        .replace("{{USER_QUESTION}}", user_message)
+    )
+
+    raw = _create_llm().invoke(prompt)
+    content = getattr(raw, "content", str(raw))
+    parsed = json.loads(_extract_json_object(content))
+    return _sanitize_chart_config(parsed)
+
+
 # ---------------------------------------------------------------------------
 # API Endpoints
 # ---------------------------------------------------------------------------
@@ -590,6 +769,38 @@ async def chat(request: ChatRequest):
             status_code=500,
             detail=f"The agent encountered an error: {str(e)}. "
                    "Try rephrasing your question.",
+        )
+
+
+@app.post("/chart", response_model=ChartResponse)
+async def chart(request: ChartRequest):
+    """Generate a structured chart configuration from a natural-language request."""
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    try:
+        df = get_cached_dataframe()
+        chart_config = _generate_chart_config(df, request.message)
+
+        memory = get_or_create_memory(request.session_id)
+        memory.save_context(
+            {"input": request.message},
+            {"output": f"[chart] {chart_config.get('title', 'Chart generated')}"},
+        )
+
+        return ChartResponse(
+            data=chart_config,
+            session_id=request.session_id,
+            total_responses=len(df),
+        )
+    except ValueError as e:
+        logger.error(f"Chart generation validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Chart generation error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to generate chart right now. Try a clearer chart request.",
         )
 
 
