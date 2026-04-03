@@ -13,6 +13,7 @@
   ],
   "rewrites": [
     { "source": "/api/chat", "destination": "/api/chat.py" },
-    { "source": "/api/stats", "destination": "/api/stats.py" }
+    { "source": "/api/stats", "destination": "/api/stats.py" },
+    { "source": "/api/chart", "destination": "/api/chart.py" }
   ]
 }
