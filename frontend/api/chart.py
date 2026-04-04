@@ -41,13 +41,13 @@ Return ONLY valid JSON.
 
 Expected shape:
 {
-  "chart_type": "bar" | "horizontal_bar" | "line" | "pie" | "donut" | "scatter" | "area" | "stacked_bar",
+    "chart_type": "bar" | "clustered_column" | "horizontal_bar" | "clustered_bar" | "line" | "pie" | "donut" | "scatter" | "bubble" | "area" | "stacked_bar" | "radar" | "heatmap" | "pyramid" | "funnel" | "waterfall" | "gantt" | "histogram" | "bullet" | "gauge" | "diverging_bar" | "comparison" | "venn",
   "title": "question-like title ending with ?",
   "x_label": "label",
   "y_label": "label",
   "legend_title": "legend",
   "colors": ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6"],
-  "data": [{"category": "text", "value": 12.3, "color_index": 0}],
+    "data": [{"category": "text", "value": 12.3, "color_index": 0, "x": 1, "y": 2, "z": 3, "target": 10, "min": 0, "max": 100, "start": 2, "end": 6, "series": "group"}],
   "tooltip_format": "{category}: {value}",
   "show_grid": true,
   "show_legend": true,
@@ -61,6 +61,10 @@ Rules:
 - Never invent columns
 - Max 20 data points
 - Use provided schema and profile
+- Use `series` for grouped/clustered/stacked comparisons
+- Use `x`,`y`,`z` for scatter/bubble and matrix-like views
+- Use `start` and `end` for gantt timelines
+- Use signed values for diverging/waterfall views
 
 Schema:
 {{SCHEMA_HINT}}
@@ -152,6 +156,35 @@ def _sanitize(config: dict) -> dict:
             "suggestion": str(config.get("suggestion", "Try asking with exact column names.")),
         }
 
+    chart_type = str(config.get("chart_type", "bar"))
+    allowed_types = {
+        "bar",
+        "clustered_column",
+        "horizontal_bar",
+        "clustered_bar",
+        "line",
+        "pie",
+        "donut",
+        "scatter",
+        "bubble",
+        "area",
+        "stacked_bar",
+        "radar",
+        "heatmap",
+        "pyramid",
+        "funnel",
+        "waterfall",
+        "gantt",
+        "histogram",
+        "bullet",
+        "gauge",
+        "diverging_bar",
+        "comparison",
+        "venn",
+    }
+    if chart_type not in allowed_types:
+        chart_type = "bar"
+
     colors = config.get("colors") if isinstance(config.get("colors"), list) else []
     colors = [c for c in colors if isinstance(c, str) and c.startswith("#")]
     if not colors:
@@ -173,6 +206,15 @@ def _sanitize(config: dict) -> dict:
             "color_index": int(item.get("color_index", idx)) % len(colors),
             "x": item.get("x"),
             "y": item.get("y"),
+            "z": item.get("z"),
+            "size": item.get("size"),
+            "target": item.get("target"),
+            "min": item.get("min"),
+            "max": item.get("max"),
+            "start": item.get("start"),
+            "end": item.get("end"),
+            "group": item.get("group"),
+            "label": item.get("label"),
             "series": item.get("series"),
         })
 
@@ -187,7 +229,7 @@ def _sanitize(config: dict) -> dict:
         title = title.rstrip(".") + "?"
 
     return {
-        "chart_type": str(config.get("chart_type", "bar")),
+        "chart_type": chart_type,
         "title": title,
         "x_label": str(config.get("x_label", "Category")),
         "y_label": str(config.get("y_label", "Value")),

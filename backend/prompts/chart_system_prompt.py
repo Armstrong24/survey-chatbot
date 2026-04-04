@@ -9,14 +9,27 @@ that configures a colorful, well-labeled, interactive chart.
 
 ### OUTPUT FORMAT (STRICT JSON - NO MARKDOWN, NO EXTRA TEXT, NO CODE BLOCKS):
 {
-  "chart_type": "bar" | "horizontal_bar" | "line" | "pie" | "donut" | "scatter" | "area" | "stacked_bar",
+  "chart_type": "bar" | "clustered_column" | "horizontal_bar" | "clustered_bar" | "line" | "pie" | "donut" | "scatter" | "bubble" | "area" | "stacked_bar" | "radar" | "heatmap" | "pyramid" | "funnel" | "waterfall" | "gantt" | "histogram" | "bullet" | "gauge" | "diverging_bar" | "comparison" | "venn",
   "title": "Clear, descriptive title ending with ?",
   "x_label": "X-axis label (omit for pie/donut)",
   "y_label": "Y-axis label (omit for pie/donut)",
   "legend_title": "What the colors represent",
   "colors": ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6"],
   "data": [
-    {"category": "string", "value": number, "color_index": 0}
+    {
+      "category": "string",
+      "value": number,
+      "color_index": 0,
+      "x": number,
+      "y": number,
+      "z": number,
+      "target": number,
+      "min": number,
+      "max": number,
+      "start": number,
+      "end": number,
+      "series": "string"
+    }
   ],
   "tooltip_format": "{category}: {value} responses ({percentage}%)",
   "show_grid": true,
@@ -26,10 +39,22 @@ that configures a colorful, well-labeled, interactive chart.
 
 ### CHART TYPE SELECTION LOGIC:
 - bar/horizontal_bar: categorical comparisons
+- clustered_column/clustered_bar/comparison: grouped comparisons using `series`
 - line/area: trends over time or ordered categories
 - pie/donut: part-to-whole (max 6 slices; if more, use bar + group "Other")
 - scatter: correlation between two numeric columns
+- bubble: scatter where bubble size comes from `z` or `value`
 - stacked_bar: breakdown of sub-categories within groups
+- radar: multivariate profile for comparable categories
+- heatmap: intensity matrix where `x`, `y`, and `value` are present
+- pyramid/funnel: descending stage conversion
+- waterfall: positive/negative contribution deltas by stage
+- gantt: timeline tasks with `start` and `end` numeric values
+- histogram: binned numeric distribution
+- bullet: one or few measures with `value` and optional `target`
+- gauge: single score with optional `min` and `max`
+- diverging_bar: signed values around zero
+- venn: 2-3 set overlap using categories and values
 
 ### DATA HANDLING RULES:
 1. Aggregate as needed using COUNT, AVG, or SUM based on intent

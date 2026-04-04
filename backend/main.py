@@ -544,13 +544,28 @@ def _sanitize_chart_config(config: dict) -> dict:
     chart_type = str(config.get("chart_type", "bar"))
     allowed_types = {
         "bar",
+        "clustered_column",
         "horizontal_bar",
+        "clustered_bar",
         "line",
         "pie",
         "donut",
         "scatter",
+        "bubble",
         "area",
         "stacked_bar",
+        "radar",
+        "heatmap",
+        "pyramid",
+        "funnel",
+        "waterfall",
+        "gantt",
+        "histogram",
+        "bullet",
+        "gauge",
+        "diverging_bar",
+        "comparison",
+        "venn",
     }
     if chart_type not in allowed_types:
         chart_type = "bar"
@@ -577,6 +592,15 @@ def _sanitize_chart_config(config: dict) -> dict:
                 "color_index": int(item.get("color_index", idx)) % len(clean_colors),
                 "x": item.get("x"),
                 "y": item.get("y"),
+                "z": item.get("z"),
+                "size": item.get("size"),
+                "target": item.get("target"),
+                "min": item.get("min"),
+                "max": item.get("max"),
+                "start": item.get("start"),
+                "end": item.get("end"),
+                "group": item.get("group"),
+                "label": item.get("label"),
                 "series": item.get("series"),
             }
         )

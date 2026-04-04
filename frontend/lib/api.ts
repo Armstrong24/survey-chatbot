@@ -29,19 +29,43 @@ export interface ChartPoint {
   color_index?: number;
   x?: number;
   y?: number;
+  z?: number;
+  size?: number;
+  target?: number;
+  min?: number;
+  max?: number;
+  start?: number;
+  end?: number;
+  group?: string;
+  label?: string;
   series?: string;
 }
 
 export interface ChartConfig {
   chart_type?:
     | "bar"
+    | "clustered_column"
     | "horizontal_bar"
+    | "clustered_bar"
     | "line"
     | "pie"
     | "donut"
     | "scatter"
+    | "bubble"
     | "area"
-    | "stacked_bar";
+    | "stacked_bar"
+    | "radar"
+    | "heatmap"
+    | "pyramid"
+    | "funnel"
+    | "waterfall"
+    | "gantt"
+    | "histogram"
+    | "bullet"
+    | "gauge"
+    | "diverging_bar"
+    | "comparison"
+    | "venn";
   title?: string;
   x_label?: string;
   y_label?: string;
