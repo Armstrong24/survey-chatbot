@@ -853,7 +853,12 @@ def _coerce_chart_for_renderer(config: dict, message: str) -> dict:
         d0["min"] = float(d0.get("min", 0) or 0)
         d0["max"] = float(d0.get("max", 100) or 100)
 
-    config["title"] = str(config.get("title", "Survey chart?")).rstrip(".") + "?"
+    normalized_title = str(config.get("title", "Survey chart?")).strip()
+    if not normalized_title:
+        normalized_title = "Survey chart?"
+    if not normalized_title.endswith("?"):
+        normalized_title = normalized_title.rstrip(".") + "?"
+    config["title"] = normalized_title
     return config
 
 
@@ -914,6 +919,57 @@ def _build_direct_chart(df: pd.DataFrame, message: str) -> Optional[dict]:
                 "show_legend": False,
                 "note": "Histogram bins derived from actual rating values",
             }
+
+    if ctype == "funnel" and awareness_col and own_bag_col and willing_col:
+        aware = (_to_bool_series(df[awareness_col]) == True)
+        own = (_to_bool_series(df[own_bag_col]) == True)
+        willing = (_to_bool_series(df[willing_col]) == True)
+        total = float(len(df))
+        s1 = float(aware.sum())
+        s2 = float((aware & own).sum())
+        s3 = float((aware & own & willing).sum())
+        data = [
+            {"category": "Total Respondents", "value": total},
+            {"category": "Aware of Ban", "value": s1},
+            {"category": "Aware + Own Reusable Bag", "value": s2},
+            {"category": "Aware + Own + Willing to Pay", "value": s3},
+        ]
+        return {
+            "chart_type": "funnel",
+            "title": "How does awareness convert into willingness to pay for sustainable bags?",
+            "x_label": "Stage",
+            "y_label": "Respondents",
+            "legend_title": "Conversion Funnel",
+            "colors": _CHART_PALETTE,
+            "data": data,
+            "show_grid": False,
+            "show_legend": True,
+            "note": "Funnel stages are computed from boolean overlaps in live responses",
+        }
+
+    if ctype == "pyramid":
+        reasons_col = _find_column(df, ["reason", "still use plastic", "main reasons"])
+        if reasons_col:
+            s = df[reasons_col].fillna("").astype(str).str.strip()
+            exploded = s[s != ""].str.split(",").explode().str.strip()
+            vc = exploded[exploded != ""].value_counts().head(8)
+            if not vc.empty:
+                data = [
+                    {"category": str(k), "value": float(v), "color_index": i % len(_CHART_PALETTE)}
+                    for i, (k, v) in enumerate(vc.items())
+                ]
+                return {
+                    "chart_type": "pyramid",
+                    "title": "What are the top reasons people still use plastic bags?",
+                    "x_label": "Reason",
+                    "y_label": "Mentions",
+                    "legend_title": "Top Reasons",
+                    "colors": _CHART_PALETTE,
+                    "data": data,
+                    "show_grid": False,
+                    "show_legend": True,
+                    "note": "Multi-select reasons are split and counted from responses",
+                }
 
     if ctype == "venn" and awareness_col and own_bag_col and willing_col:
         a = _to_bool_series(df[awareness_col]) == True

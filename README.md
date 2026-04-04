@@ -128,27 +128,14 @@ Frontend should be available at `http://localhost:3000` (or `http://localhost:30
 ## Chart Request Examples
 
 - Show a bar chart of occupation-wise response counts
-- Show a clustered column chart of age group by occupation
-- Show a horizontal bar chart of where people get plastic bags
-- Show a clustered bar chart of reusable bag ownership by occupation
 - Show a line chart of responses over timestamp
 - Create a pie chart of reusable bag ownership
 - Create a donut chart of plastic bag frequency usage
-- Show a scatter chart of income vs harm rating
-- Show a bubble chart of income vs harm rating sized by usage frequency
-- Show an area chart of responses over timestamp
 - Show a stacked bar chart of age group by occupation
-- Show a radar chart comparing average harm rating across age groups
-- Show a heatmap of occupation vs bag usage frequency
 - Show a pyramid chart of top reasons people still use plastic bags
 - Show a funnel chart of awareness to willingness to pay for sustainable bags
-- Show a waterfall chart of contribution of top reasons to plastic bag usage
-- Show a gantt chart of campaign phases using start and end values
 - Show a histogram chart of harm rating distribution
 - Show a bullet chart of willingness to pay vs target by occupation
-- Show a gauge chart of overall sustainable readiness score
-- Show a diverging bar chart of positive vs negative reasons to switch
-- Show a comparison chart of reusable bag ownership by age group
 - Show a venn diagram of people aware of ban, owning reusable bags, and willing to pay
 
 ## API Routes
