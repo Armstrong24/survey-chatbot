@@ -28,12 +28,12 @@ const SUGGESTED_QUESTIONS = [
 
 const SUGGESTED_CHARTS = [
   "Show a bar chart of occupation-wise response counts",
+  "Show a bar chart of reasons people still use plastic bags",
   "Show a line chart of responses over timestamp",
   "Create a pie chart of reusable bag ownership",
   "Create a donut chart of plastic bag frequency usage",
   "Show a stacked bar chart of age group by occupation",
-  "Show a pyramid chart of top reasons people still use plastic bags",
-  "Show a funnel chart of awareness to willingness to pay for sustainable bags",
+  "Show a scatter plot of monthly income vs harm rating",
   "Show a histogram chart of harm rating distribution",
   "Show a bullet chart of willingness to pay vs target by occupation",
   "Show a venn diagram of people aware of ban, owning reusable bags, and willing to pay",
