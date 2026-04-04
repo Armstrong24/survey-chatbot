@@ -164,7 +164,7 @@ export default function SurveyChart({ config }: Props) {
   const stackedSeriesKeys = Array.from(
     new Set(data.map((d) => d.series).filter((v): v is string => typeof v === "string" && v.trim().length > 0))
   );
-  const groupedData = stackedData;
+  const groupedData = stackedSeriesKeys.length > 0 ? stackedData : data;
   const groupedSeriesKeys = stackedSeriesKeys;
 
   const waterfallData = data.reduce<
