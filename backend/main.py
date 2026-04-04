@@ -765,6 +765,38 @@ def _willingness_to_score(series: pd.Series) -> pd.Series:
     return lower.map(map_text)
 
 
+def _extract_scaled_number(text: str) -> Optional[float]:
+    t = str(text or "").strip().lower()
+    if not t:
+        return None
+
+    multiplier = 1.0
+    if "lakh" in t or "lac" in t:
+        multiplier = 100000.0
+    elif "crore" in t:
+        multiplier = 10000000.0
+    elif re.search(r"\bk\b", t):
+        multiplier = 1000.0
+
+    nums = re.findall(r"-?\d+(?:\.\d+)?", t.replace(",", ""))
+    if not nums:
+        return None
+
+    vals = [float(n) * multiplier for n in nums]
+    if len(vals) >= 2:
+        return (vals[0] + vals[1]) / 2.0
+    return vals[0]
+
+
+def _series_to_numeric_flexible(series: pd.Series) -> pd.Series:
+    s = series.fillna("").astype(str).str.strip()
+    n = pd.to_numeric(s, errors="coerce")
+    missing = n.isna()
+    if missing.any():
+        n.loc[missing] = s.loc[missing].map(_extract_scaled_number)
+    return n
+
+
 def _requested_chart_type(message: str) -> Optional[str]:
     m = message.lower()
     mapping = [
@@ -872,6 +904,48 @@ def _build_direct_chart(df: pd.DataFrame, message: str) -> Optional[dict]:
     willing_col = _find_column(df, ["willingness", "willing to pay", "pay", "price point"])
     occupation_col = _find_column(df, ["occupation", "profession"])
     harm_col = _find_column(df, ["harm", "rating", "scale", "1-5"])
+    income_col = _find_column(df, ["monthly household income", "monthly income", "income"])
+
+    if ctype in {"scatter", "bubble"} and income_col and harm_col:
+        x = _series_to_numeric_flexible(df[income_col])
+        y = _series_to_numeric_flexible(df[harm_col])
+        pairs = pd.DataFrame({"x": x, "y": y, "label": df[income_col].fillna("").astype(str).str.strip()}).dropna(subset=["x", "y"])
+
+        if pairs.empty:
+            # Fallback: map income categories to ordinal positions if range parsing fails.
+            labels = df[income_col].fillna("").astype(str).str.strip()
+            valid = labels[labels != ""]
+            ordered = valid.drop_duplicates().tolist()
+            if ordered:
+                mapping = {k: i + 1 for i, k in enumerate(ordered)}
+                x_ord = labels.map(lambda v: mapping.get(v.strip(), None) if isinstance(v, str) else None)
+                pairs = pd.DataFrame({"x": x_ord, "y": y, "label": labels}).dropna(subset=["x", "y"])
+
+        if not pairs.empty:
+            rows = []
+            for i, row in pairs.head(40).reset_index(drop=True).iterrows():
+                rows.append(
+                    {
+                        "category": row["label"] if row["label"] else f"Point {i + 1}",
+                        "value": round(float(row["y"]), 1),
+                        "x": round(float(row["x"]), 2),
+                        "y": round(float(row["y"]), 2),
+                        "z": round(float(abs(row["y"]) or 1), 2),
+                    }
+                )
+
+            return {
+                "chart_type": ctype,
+                "title": "How does monthly income relate to harm rating?",
+                "x_label": "Monthly Income",
+                "y_label": "Harm Rating (1-5)",
+                "legend_title": "Income vs Harm",
+                "colors": _CHART_PALETTE,
+                "data": rows,
+                "show_grid": True,
+                "show_legend": False,
+                "note": "Scatter points are built from individual response rows",
+            }
 
     if ctype in {"comparison", "clustered_column", "clustered_bar", "stacked_bar"} and age_col and own_bag_col:
         tmp = df[[age_col, own_bag_col]].fillna("").astype(str).apply(lambda s: s.str.strip())
